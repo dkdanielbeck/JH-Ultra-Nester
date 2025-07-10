@@ -260,7 +260,7 @@ export default function CalculateLengthNesting() {
                         <h3 className="text-lg font-semibold mb-2">
                           {layout.sheetName} ({layout.sheetSize + " mm"})
                         </h3>
-                        <svg className="sheet" width={width} height={height} viewBox={`0 0 ${layout.width} ${layout.length}`}>
+                        <svg className="sheet mx-auto" width={width} height={height} viewBox={`0 0 ${layout.width} ${layout.length}`}>
                           {layout.rectangles.map((rectangle, idx) => (
                             <rect
                               key={idx}
