@@ -5,10 +5,11 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 import { loadLanguage } from "@/App";
 import { Checkbox } from "@/components/ui/checkbox";
 import { STORAGE_KEYS, type MachineProfile } from "@/lib/types";
-import { addMachine, loadFromLocalStorage, saveMachine, saveToLocalStorage } from "@/lib/utils";
 import { useSort } from "@/hooks/useSort";
+import { loadFromLocalStorage, saveToLocalStorage } from "@/lib/utils-local-storage";
+import { addMachine, saveMachine } from "@/lib/utils-machines";
 
-export default function MyMachines() {
+export default function MySheetMachines() {
   const [language] = useState<string>(() => loadLanguage());
 
   const [machines, setMachines] = useState<MachineProfile[]>(() => loadFromLocalStorage(STORAGE_KEYS.MACHINES));
@@ -75,7 +76,7 @@ export default function MyMachines() {
   return (
     <div className="flex flex-col max-h-[calc(100vh-100px)]">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold p-4">{language === "da" ? "Mine maskiner" : "My machines"}</h1>
+        <h1 className="text-2xl font-bold p-4">{language === "da" ? "Mine plade maskiner" : "My sheet machines"}</h1>
         <p className="pl-4 pr-4 mb-8">
           {language === "da"
             ? "På denne side kan du tilføje maskiner med tilhørende margen og kant som du kontinuerligt kan genbruge når du udregner nesting"

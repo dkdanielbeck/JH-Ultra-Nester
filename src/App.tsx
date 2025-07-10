@@ -1,5 +1,4 @@
 import "./App.css";
-import { MaxRectsPacker, Rectangle } from "maxrects-packer";
 import { Separator } from "@/components/ui/separator";
 import {
   Sidebar,
@@ -14,33 +13,21 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { RectangleHorizontal, Square, TableCellsMerge, Zap } from "lucide-react";
+import { RectangleHorizontal, Square, SquareSplitHorizontal, TableCellsMerge, Ticket, TicketMinus, Zap } from "lucide-react";
 import { HashRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import MySheets from "@/pages/MySheets";
-import MyElements from "@/pages/MyElements";
-import CalculateNesting from "@/pages/CalculateNesting";
+import MySheetElements from "@/pages/MySheetElements";
 import { Button } from "./components/ui/button";
 import { useEffect, useState } from "react";
-import MyMachines from "./pages/MyMachines";
+import MySheetMachines from "./pages/MySheetMachines";
 import { Link } from "react-router-dom";
-
-type Sheet = {
-  width: number;
-  height: number;
-  id: string;
-};
-
-type Shape = {
-  width: number;
-  height: number;
-  id: string;
-};
+import MySteelLengths from "./pages/MySteelLengths";
+import MySteelLengthElements from "./pages/MySteelLengthElements";
+import CalculateSheetNesting from "@/pages/CalculateSheetNesting";
+import CalculateLengthNesting from "./pages/CalculateLengthNesting";
 
 const STORAGE_KEY = "language";
-
-type Shapes = Shape[];
-type Sheets = Sheet[];
 
 export function loadLanguage(): string {
   try {
@@ -66,76 +53,52 @@ function App() {
 
   const menuItems = [
     {
-      title: language === "da" ? "Udregn nesting" : "Calculate nesting",
+      title: language === "da" ? "Udregn plade nesting" : "Calculate sheet nesting",
       icon: TableCellsMerge,
-      path: "/",
+      path: "/calculate-sheet-nesting",
+      divider: false,
+    },
+    {
+      title: language === "da" ? "Udregn stål længde nesting" : "Calculate steel length nesting",
+      icon: SquareSplitHorizontal,
+      path: "/calculate-length-nesting",
+      divider: true,
     },
     {
       title: language === "da" ? "Mine plader" : "My sheets",
       icon: Square,
       path: "/sheets",
+      divider: false,
     },
     {
-      title: language === "da" ? "Mine emner" : "My elements",
+      title: language === "da" ? "Mine plade emner" : "My sheet elements",
       icon: RectangleHorizontal,
-      path: "/elements",
+      path: "/sheet-elements",
+      divider: false,
     },
     {
-      title: language === "da" ? "Mine maskiner" : "My machines",
+      title: language === "da" ? "Mine plade maskiner" : "My sheet machines",
       icon: Zap,
-      path: "/machines",
+      path: "/sheet-machines",
+      divider: true,
+    },
+    {
+      title: language === "da" ? "Mine stål længder" : "My steel lengths",
+      icon: TicketMinus,
+      path: "/steel-lengths",
+      divider: false,
+    },
+    {
+      title: language === "da" ? "Mine stål længde emner" : "My steel length elements",
+      icon: Ticket,
+      path: "/steel-length-elements",
+      divider: true,
     },
   ];
-  const spacing: number = 10;
 
   useEffect(() => {
     saveLanguage(language);
   }, [language]);
-
-  const sheets: Sheets = [
-    { width: 3000, height: 1500, id: "1" },
-    { width: 2000, height: 1000, id: "2" },
-    { width: 2500, height: 1250, id: "3" },
-    { width: 1500, height: 750, id: "4" },
-  ];
-
-  const shapes: Shapes = [
-    { width: 500, height: 400, id: "1" },
-    { width: 800, height: 600, id: "2" },
-    { width: 300, height: 700, id: "3" },
-    { width: 1000, height: 1000, id: "4" },
-  ];
-
-  const results = sheets.map((sheet) => {
-    const packer = new MaxRectsPacker(sheet.width, sheet.height, spacing, {
-      smart: true,
-      pot: false,
-      square: false,
-      allowRotation: true,
-      tag: false,
-    });
-
-    // Deep copy the shapes so each packer gets a fresh input
-    packer.addArray(
-      shapes.map(
-        (shape) =>
-          ({
-            width: shape.width,
-            height: shape.height,
-            id: shape.id,
-          } as unknown as Rectangle)
-      )
-    );
-
-    return {
-      sheet: `${sheet.width}×${sheet.height}`,
-      binCount: packer.bins.length,
-      bins: packer.bins,
-    };
-  });
-
-  // Sort by most efficient (fewest sheets used)
-  results.sort((a, b) => a.binCount - b.binCount);
 
   return (
     <Router>
@@ -146,16 +109,18 @@ function App() {
             <SidebarGroup>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {menuItems.map((item) => (
-                    <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton asChild>
-                        <Link to={item.path} className="flex items-center gap-2">
-                          <item.icon className="h-4 w-4" />
-                          <span>{item.title}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
+                  {menuItems.map((item) => {
+                    return (
+                      <SidebarMenuItem style={item.divider ? { borderBottom: "1px solid var(--border)" } : {}} key={item.title}>
+                        <SidebarMenuButton asChild>
+                          <Link to={item.path} className="flex items-center gap-2">
+                            <item.icon className="h-4 w-4" />
+                            <span>{item.title}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
@@ -195,11 +160,14 @@ function App() {
           </header>
           <div className="flex flex-1 flex-col gap-4 p-4">
             <Routes>
-              <Route path="/" element={<Navigate to="/calculate" replace />} />
-              <Route path="/calculate" element={<CalculateNesting />} />
+              <Route path="/" element={<Navigate to="/calculate-sheet-nesting" replace />} />
+              <Route path="/calculate-sheet-nesting" element={<CalculateSheetNesting />} />
+              <Route path="/calculate-length-nesting" element={<CalculateLengthNesting />} />
               <Route path="/sheets" element={<MySheets />} />
-              <Route path="/elements" element={<MyElements />} />
-              <Route path="/machines" element={<MyMachines />} />
+              <Route path="/sheet-elements" element={<MySheetElements />} />
+              <Route path="/sheet-machines" element={<MySheetMachines />} />
+              <Route path="/steel-lengths" element={<MySteelLengths />} />
+              <Route path="/steel-length-elements" element={<MySteelLengthElements />} />
             </Routes>
           </div>
         </SidebarInset>

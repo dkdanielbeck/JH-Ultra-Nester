@@ -1,0 +1,287 @@
+import { loadLanguage } from "@/App";
+import { useState } from "react";
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import { Loader2Icon, ShieldAlert } from "lucide-react";
+import { Link } from "react-router-dom";
+import { STORAGE_KEYS, type SteelLength, type SteelLengthElement, type SheetNestingResults } from "@/lib/types";
+import { loadFromLocalStorage } from "@/lib/utils-local-storage";
+import { findBest } from "@/lib/utils-nesting";
+
+export default function CalculateLengthNesting() {
+  const [language] = useState<string>(() => loadLanguage());
+  const [steelLengthElements] = useState<SteelLengthElement[]>(() => loadFromLocalStorage(STORAGE_KEYS.STEELLENGTHELEMENTS));
+  const [steelLengths] = useState<SteelLength[]>(() => loadFromLocalStorage(STORAGE_KEYS.STEELLENGTHS));
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [endResults, setEndResults] = useState<SheetNestingResults>({
+    sheets: [],
+    totalMaterialArea: 0,
+    totalSheetElementsArea: 0,
+    totalWaste: 0,
+    layouts: [],
+  });
+  const [selectedSteelLengthElements, setSelectedSteelLengthElements] = useState<SteelLengthElement[]>([]);
+  const [selectedSteelLengths, setSelectedSteelLengths] = useState<SteelLength[]>(steelLengths);
+
+  const toggleSteelElementSelection = (steelLengthElement: SteelLengthElement) => {
+    setSelectedSteelLengthElements((previous) =>
+      previous.some((selectedSteelLengthElement) => steelLengthElement.id === selectedSteelLengthElement.id) ? previous : [...previous, steelLengthElement]
+    );
+    setQuantities((previous) => ({
+      ...previous,
+      [steelLengthElement.id]: 1,
+    }));
+  };
+
+  const toggleSteelLengthSelection = (steelLength: SteelLength) => {
+    setSelectedSteelLengths((previous) =>
+      previous.some((selectedSteelLength) => steelLength.id === selectedSteelLength.id)
+        ? previous.filter((previousSteelLength) => previousSteelLength.id !== steelLength.id)
+        : [...previous, steelLength]
+    );
+  };
+
+  const removeSteelLengthElement = (steelLengthElementId: string) => {
+    setSelectedSteelLengthElements((previous) => previous.filter((previousSteelLengthElement) => previousSteelLengthElement.id !== steelLengthElementId));
+    setQuantities((previous) => {
+      const newQs = { ...previous };
+
+      delete newQs[steelLengthElementId];
+      return newQs;
+    });
+  };
+
+  const getResults = () => {
+    setIsLoading(true);
+    setTimeout(() => {
+      const relevantElements: SteelLengthElement[] = selectedSteelLengthElements.flatMap((selectedSteelLengthElement) =>
+        Array.from({ length: quantities[selectedSteelLengthElement.id] ?? 0 }).map(() => ({
+          id: selectedSteelLengthElement.id,
+          width: selectedSteelLengthElement.width,
+          length: selectedSteelLengthElement.length,
+          name: selectedSteelLengthElement.name,
+          instanceId: crypto.randomUUID(),
+        }))
+      );
+
+      const best = findBest(relevantElements, selectedSteelLengths, { border: 0, margin: 0, machineName: "Saw", id: "saw", default: false, straightCuts: false });
+
+      const results = selectedSteelLengths
+        .map((steelLength) => ({
+          sheetName: steelLength.name,
+          sheetSize: `${steelLength.length}`,
+          count: best.counts[steelLength.id] || 0,
+          sheetArea: steelLength.width * steelLength.length,
+        }))
+
+        .filter((steelLength) => steelLength.count > 0)
+        .sort((a, b) => b.count - a.count);
+
+      setEndResults({
+        sheets: results,
+        totalMaterialArea: best.totalArea,
+        totalSheetElementsArea: relevantElements.reduce((sum, sheetElement) => sum + sheetElement.width * sheetElement.length, 0),
+        totalWaste: best.totalArea - relevantElements.reduce((sum, sheetElement) => sum + sheetElement.width * sheetElement.length, 0),
+        layouts: best.layouts,
+      });
+
+      setIsLoading(false);
+    }, 0);
+  };
+  console.log(endResults);
+
+  return (
+    <div className="flex max-h-[calc(100vh-100px)]">
+      <div className="p-4 mb-2">
+        <h1 className="text-2xl font-bold mb-4">{language === "da" ? "Udregn stål længde nesting" : "Calculate steel length nesting"}</h1>
+        <p className="mb-4 max-w-[calc(40vw)]">
+          {language === "da"
+            ? "På denne side kan du vælge hvilke stål længder og hvilke stål længde emner du ønsker at udregne nesting med"
+            : "On this page you can select which steel lengths and which steel length elements you wish to use to calculate nesting"}
+        </p>
+
+        <div className="flex flex-col gap-4 max-w-[calc(40vw)]">
+          {(steelLengths.length === 0 || steelLengthElements.length === 0) && (
+            <div className="flex flex-col gap-4 max-w-[calc(40vw)] mt-8">
+              {steelLengthElements.length === 0 && (
+                <div className="flex">
+                  <ShieldAlert className="h-6 w-6 mr-2" />
+                  <p className="mr-2">{language === "da" ? "Du har ikke oprettet nogen stål længde emmer endnu." : "You have not yet created any steel length elements."}</p>
+
+                  <Link to={"/steel-length-elements"} className="flex items-center gap-2 link">
+                    <span>{language === "da" ? "Opret stål længde emmer her" : "Create steel length elements here"}</span>
+                  </Link>
+                </div>
+              )}
+
+              {steelLengths.length === 0 && (
+                <div className="flex">
+                  <ShieldAlert className="h-6 w-6 mr-2" />
+                  <p className="mr-2">{language === "da" ? "Du har ikke oprettet nogen stål længder endnu." : "You have not yet created any steel lengths."}</p>
+                  <Link to={"/steel-lengths"} className="link">
+                    <span>{language === "da" ? "Opret stål længder her" : "Create steel lengths here"}</span>
+                  </Link>
+                </div>
+              )}
+            </div>
+          )}
+          {steelLengths.length !== 0 && steelLengthElements.length !== 0 && (
+            <div className="flex flex-row gap-6 max-w-[calc(40vw)]">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline">{language === "da" ? "Vælg stål længde emmer" : "Select steel length elements"}</Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  {steelLengthElements.map((steelLengthElement) => (
+                    <DropdownMenuCheckboxItem
+                      key={steelLengthElement.id}
+                      checked={selectedSteelLengthElements.some((selectedElement) => steelLengthElement.id === selectedElement.id)}
+                      onCheckedChange={() => toggleSteelElementSelection(steelLengthElement)}
+                    >
+                      {steelLengthElement.name} ({steelLengthElement.length} mm)
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline">{language === "da" ? "Vælg stål længder" : "Select steel lengths"}</Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  {steelLengths.map((steelLength) => (
+                    <DropdownMenuCheckboxItem
+                      key={steelLength.id}
+                      checked={selectedSteelLengths.some((selectedSteelLength) => steelLength.id === selectedSteelLength.id)}
+                      onCheckedChange={() => toggleSteelLengthSelection(steelLength)}
+                    >
+                      {steelLength.name} ({steelLength.length} mm)
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              {steelLengths.length !== 0 && steelLengthElements.length !== 0 && (
+                <div className="ml-auto">
+                  <Button disabled={isLoading || selectedSteelLengths?.length === 0 || selectedSteelLengthElements?.length === 0} onClick={() => getResults()}>
+                    {isLoading ? <Loader2Icon className="animate-spin" /> : language === "da" ? "Udregn nesting" : "Calculate nesting"}
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {selectedSteelLengthElements.length !== 0 && (
+            <div style={{ borderRadius: "10px" }} className="flex-grow overflow-auto p-4 bg-muted max-h-[calc(70vh)]">
+              <Table>
+                <TableHeader className="top-0 bg-muted z-10">
+                  <TableRow>
+                    <TableHead className="cursor-pointer">{language === "da" ? "Navn" : "Name"}</TableHead>
+                    <TableHead className="cursor-pointer">{language === "da" ? "Længde (mm)" : "Length (mm)"}</TableHead>
+
+                    <TableHead>{language === "da" ? "Antal" : "Quantity"}</TableHead>
+                    <TableHead></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {selectedSteelLengthElements.map((selectedSteelLengthElement) => {
+                    if (!selectedSteelLengthElement) return null;
+                    return (
+                      <TableRow key={selectedSteelLengthElement.id}>
+                        <TableCell>{selectedSteelLengthElement.name}</TableCell>
+                        <TableCell>{selectedSteelLengthElement.length}</TableCell>
+                        <TableCell>
+                          <Input
+                            className="max-w-40"
+                            placeholder={language === "da" ? "Antal" : "Quantity"}
+                            type="number"
+                            value={quantities[selectedSteelLengthElement.id] ?? 1}
+                            onChange={(e) =>
+                              setQuantities((prev) => ({
+                                ...prev,
+                                [selectedSteelLengthElement.id]: parseInt(e.target.value || "1"),
+                              }))
+                            }
+                          />
+                        </TableCell>
+                        <TableCell className="flex justify-end space-x-2">
+                          <Button disabled={isLoading} variant="destructive" size="sm" onClick={() => removeSteelLengthElement(selectedSteelLengthElement.id)}>
+                            {language === "da" ? "Slet" : "Remove"}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="flex-grow pl-4 pr-4 max-w-[calc(47vw)]">
+        {endResults.sheets.length !== 0 && selectedSteelLengthElements.length !== 0 && selectedSteelLengths.length !== 0 && (
+          <div className="p-4">
+            <h2 className="text-xl font-semibold mb-4">{language === "da" ? "Resultat" : "Result"}</h2>
+            <ul className="list-disc list-inside space-y-1">
+              {endResults.sheets.map((sheet, index) => (
+                <li key={index}>
+                  {language === "da" ? `Brug ${sheet.count} stk. ${sheet.sheetName} (${sheet.sheetSize} mm)` : `Use ${sheet.count} sheet(s) of ${sheet.sheetName} (${sheet.sheetSize} mm)`}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <>
+          {endResults.layouts.length > 0 && <h2 className="text-xl font-semibold mb-2 pl-4 mt-4">{language === "da" ? "visualiseret" : "Visualized"}</h2>}
+
+          {endResults.layouts.length > 0 &&
+            (() => {
+              const MAX_DIM = 500;
+
+              // 1) find the largest sheet in your result set
+              const maxW = Math.max(...endResults.layouts.map((l) => l.width));
+              const maxH = Math.max(...endResults.layouts.map((l) => l.length));
+
+              // 2) one single global scale factor
+              const globalScale = Math.min(MAX_DIM / maxW, MAX_DIM / maxH);
+
+              return (
+                <div style={{ borderRadius: "10px" }} className="flex flex-wrap gap-4 overflow-auto p-4 bg-muted max-h-[calc(70vh)]">
+                  {endResults.layouts.map((layout, i) => {
+                    const width = layout.width * globalScale;
+                    const height = layout.length * globalScale;
+                    const stroke = 4;
+                    const inset = stroke / 2;
+
+                    return (
+                      <div key={i} className="mb-4">
+                        <h3 className="text-lg font-semibold mb-2">
+                          {layout.sheetName} ({layout.sheetSize + " mm"})
+                        </h3>
+                        <svg className="sheet" width={width} height={height} viewBox={`0 0 ${layout.width} ${layout.length}`}>
+                          {layout.rectangles.map((rectangle, idx) => (
+                            <rect
+                              key={idx}
+                              x={rectangle.x + inset}
+                              y={rectangle.y + inset}
+                              width={(rectangle.rotated ? rectangle.length : rectangle.width) - stroke}
+                              height={(rectangle.rotated ? rectangle.width : rectangle.length) - stroke}
+                              fill="#009eba"
+                              stroke="#0F47A1"
+                              strokeWidth={stroke}
+                            />
+                          ))}
+                        </svg>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+        </>
+      </div>
+    </div>
+  );
+}

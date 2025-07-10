@@ -1,9 +1,21 @@
-export type Element = {
+export type SheetElement = {
   id: string;
   name: string;
   width: number;
   length: number;
   instanceId?: string;
+};
+export type SteelLength = {
+  id: string;
+  name: string;
+  length: number;
+  width: number;
+};
+export type SteelLengthElement = {
+  id: string;
+  name: string;
+  length: number;
+  width: number;
 };
 
 export type MachineProfile = {
@@ -23,21 +35,25 @@ export type Sheet = {
 };
 
 export const STORAGE_KEYS = {
-  ELEMENTS: "my-elements",
+  SHEETELEMENTS: "my-sheet-elements",
   SHEETS: "my-sheets",
   MACHINES: "my-machines",
+  STEELLENGTHS: "my-steel-lengths",
+  STEELLENGTHELEMENTS: "my-steel-length-elements",
 } as const;
 
 export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS];
 
 export type StorageKeyMap = {
-  [STORAGE_KEYS.ELEMENTS]: Element[];
+  [STORAGE_KEYS.SHEETELEMENTS]: SheetElement[];
   [STORAGE_KEYS.SHEETS]: Sheet[];
+  [STORAGE_KEYS.STEELLENGTHS]: SteelLength[];
+  [STORAGE_KEYS.STEELLENGTHELEMENTS]: SteelLengthElement[];
   [STORAGE_KEYS.MACHINES]: MachineProfile[];
 };
 
 export interface PlacedRect {
-  element: Element;
+  sheetElement: SheetElement;
   x: number;
   y: number;
   width: number;
@@ -62,10 +78,10 @@ export type DPResult = {
   layouts: SheetLayout[];
 };
 
-export interface NestingResults {
+export interface SheetNestingResults {
   sheets: { sheetName: string; sheetSize: string; count: number; sheetArea: number }[];
   layouts: SheetLayout[];
   totalMaterialArea: number;
-  totalElementsArea: number;
+  totalSheetElementsArea: number;
   totalWaste: number;
 }

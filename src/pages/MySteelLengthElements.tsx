@@ -3,46 +3,41 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { loadLanguage } from "@/App";
-import { STORAGE_KEYS, type Sheet } from "@/lib/types";
+import { STORAGE_KEYS, type SteelLengthElement } from "@/lib/types";
 import { useSort } from "@/hooks/useSort";
 import { loadFromLocalStorage, saveToLocalStorage } from "@/lib/utils-local-storage";
-import { addSheetOrSheetElement, saveSheetOrSheetElement } from "@/lib/utils-sheets-and-sheet-elements";
+import { addSteelLengthOrSteelLengthElement, saveSteelLengthOrSteelLengthElement } from "@/lib/utils-steel-lengths-and-length-elements";
 
-export default function MySheets() {
+export default function MySteelLengthElements() {
   const [language] = useState<string>(() => loadLanguage());
 
-  const [sheets, setSheets] = useState<Sheet[]>(() => loadFromLocalStorage(STORAGE_KEYS.SHEETS));
-
+  const [steelLengthElements, setSteelLengthElements] = useState<SteelLengthElement[]>(() => loadFromLocalStorage(STORAGE_KEYS.STEELLENGTHELEMENTS));
   const [name, setName] = useState<string>("");
-  const [width, setWidth] = useState<string>("");
   const [length, setLength] = useState<string>("");
   const [editedName, setEditedName] = useState<string>("");
-  const [editedWidth, setEditedWidth] = useState<string>("");
   const [editedLength, setEditedLength] = useState<string>("");
   const [beingEdited, setBeingEdited] = useState<string>("");
-
-  const { sortedItems, handleSort } = useSort<Sheet>(sheets, "length");
+  const { sortedItems, handleSort } = useSort<SteelLengthElement>(steelLengthElements, "length");
 
   useEffect(() => {
-    saveToLocalStorage(STORAGE_KEYS.SHEETS, sheets);
-  }, [sheets]);
+    saveToLocalStorage(STORAGE_KEYS.STEELLENGTHELEMENTS, steelLengthElements);
+  }, [steelLengthElements]);
 
-  const addSheet = () => {
-    const updatedSheets = addSheetOrSheetElement(width, length, name, sheets);
-    setSheets(updatedSheets);
+  const addNewSteelLengthElement = () => {
+    const updatedSteelLengthElements = addSteelLengthOrSteelLengthElement(length, name, steelLengthElements);
+
+    setSteelLengthElements(updatedSteelLengthElements);
 
     setName("");
-    setWidth("");
     setLength("");
   };
 
-  const SaveEditedSheet = () => {
-    const updatedSheets = saveSheetOrSheetElement(width, length, name, sheets, beingEdited);
+  const SaveEditedSteelLengthElement = () => {
+    const updatedSteelLengthElements = saveSteelLengthOrSteelLengthElement(length, name, steelLengthElements, beingEdited);
 
-    setSheets(updatedSheets);
+    setSteelLengthElements(updatedSteelLengthElements);
 
     setEditedName("");
-    setEditedWidth("");
     setEditedLength("");
     setBeingEdited("");
   };
@@ -50,17 +45,16 @@ export default function MySheets() {
   return (
     <div className="flex flex-col max-h-[calc(100vh-100px)]">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold p-4">{language === "da" ? "Mine plader" : "My sheets"}</h1>
+        <h1 className="text-2xl font-bold p-4">{language === "da" ? "Mine stål længde emner" : "My steel Length elements"}</h1>
         <p className="pl-4 pr-4 mb-8">
           {language === "da"
-            ? "På denne side kan du tilføje plader som du kontinuerligt kan genbruge når du udregner nesting. Vær opmærksom på at Længde altid vil ende med at være det største tal"
-            : "On this page you can add sheets that you can continuously reuse when calculating nestings. Take note that Length will always end up the bigger number"}
+            ? "På denne side kan du tilføje stål længde emner som du kontinuerligt kan genbruge når du udregner nesting."
+            : "On this page you can add steel length elements that you can continuously reuse when calculating nestings."}
         </p>
         <div className="flex flex-col sm:flex-row gap-2">
-          <Input placeholder={language === "da" ? "Plade navn" : "Sheet name"} value={name} onChange={(e) => setName(e.target.value)} />
+          <Input placeholder={language === "da" ? "Stål længde emne navn" : "Steel length element name"} value={name} onChange={(e) => setName(e.target.value)} />
           <Input placeholder={language === "da" ? "Længde (mm)" : "Length (mm)"} type="number" value={length} onChange={(e) => setLength(e.target.value)} />
-          <Input placeholder={language === "da" ? "Bredde (mm)" : "Width (mm)"} type="number" value={width} onChange={(e) => setWidth(e.target.value)} />
-          <Button disabled={name === "" || length === "" || width === "" || !name || !width || !length} variant="secondary" onClick={addSheet}>
+          <Button disabled={name === "" || length === "" || !name || !length} variant="secondary" onClick={addNewSteelLengthElement}>
             {language === "da" ? "Tilføj" : "Add"}
           </Button>
         </div>
@@ -77,22 +71,20 @@ export default function MySheets() {
                 <TableHead onClick={() => handleSort("length")} className="cursor-pointer">
                   {language === "da" ? "Længde (mm)" : "Length (mm)"}
                 </TableHead>
-                <TableHead onClick={() => handleSort("width")} className="cursor-pointer">
-                  {language === "da" ? "Bredde (mm)" : "Width (mm)"}
-                </TableHead>
                 <TableHead></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sortedItems.map((sheet) => {
-                const shouldEdit = sheet.id === beingEdited;
+              {sortedItems.map((steelLengthElement) => {
+                const shouldEdit = steelLengthElement.id === beingEdited;
+
                 return (
-                  <TableRow key={sheet.id}>
+                  <TableRow key={steelLengthElement.id}>
                     <TableCell>
                       {shouldEdit ? (
-                        <Input className="max-w-40" placeholder={language === "da" ? "Plade navn" : "Sheet name"} value={editedName} onChange={(e) => setEditedName(e.target.value)} />
+                        <Input className="max-w-40" placeholder={language === "da" ? "Stål længde navn" : "Steel length name"} value={editedName} onChange={(e) => setEditedName(e.target.value)} />
                       ) : (
-                        sheet.name
+                        steelLengthElement.name
                       )}
                     </TableCell>
                     <TableCell>
@@ -105,22 +97,16 @@ export default function MySheets() {
                           onChange={(e) => setEditedLength(e.target.value)}
                         />
                       ) : (
-                        sheet.length
+                        steelLengthElement.length
                       )}
                     </TableCell>
-                    <TableCell>
-                      {shouldEdit ? (
-                        <Input className="max-w-40" placeholder={language === "da" ? "Bredde (mm)" : "Width (mm)"} type="number" value={editedWidth} onChange={(e) => setEditedWidth(e.target.value)} />
-                      ) : (
-                        sheet.width
-                      )}
-                    </TableCell>
+
                     <TableCell className="flex justify-end space-x-2">
-                      <Button className="mr-2" variant="destructive" size="sm" onClick={() => setSheets(sheets.filter((el) => el.id !== sheet.id))}>
+                      <Button className="mr-2" variant="destructive" size="sm" onClick={() => setSteelLengthElements(steelLengthElements.filter((el) => el.id !== steelLengthElement.id))}>
                         {language === "da" ? "Slet" : "Remove"}
                       </Button>
                       {shouldEdit ? (
-                        <Button style={{ backgroundColor: "green", color: "white" }} variant="outline" size="sm" onClick={() => SaveEditedSheet()}>
+                        <Button style={{ backgroundColor: "green", color: "white" }} variant="outline" size="sm" onClick={() => SaveEditedSteelLengthElement()}>
                           {language === "da" ? "Gem" : "Save"}
                         </Button>
                       ) : (
@@ -128,10 +114,9 @@ export default function MySheets() {
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            setBeingEdited(sheet.id);
-                            setEditedName(sheet.name);
-                            setEditedWidth(sheet.width.toString());
-                            setEditedLength(sheet.length.toString());
+                            setBeingEdited(steelLengthElement.id);
+                            setEditedName(steelLengthElement.name);
+                            setEditedLength(steelLengthElement.length.toString());
                           }}
                         >
                           {language === "da" ? "Rediger" : "Edit"}

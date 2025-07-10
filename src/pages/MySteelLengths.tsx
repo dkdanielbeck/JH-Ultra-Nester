@@ -3,43 +3,41 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { loadLanguage } from "@/App";
-import { STORAGE_KEYS, type Element } from "@/lib/types";
-import { addSheetOrElement, loadFromLocalStorage, saveSheetOrElement, saveToLocalStorage } from "@/lib/utils";
+import { STORAGE_KEYS, type SteelLength } from "@/lib/types";
 import { useSort } from "@/hooks/useSort";
+import { loadFromLocalStorage, saveToLocalStorage } from "@/lib/utils-local-storage";
+import { addSteelLengthOrSteelLengthElement, saveSteelLengthOrSteelLengthElement } from "@/lib/utils-steel-lengths-and-length-elements";
 
-export default function MyElements() {
+export default function MySteelLengths() {
   const [language] = useState<string>(() => loadLanguage());
 
-  const [elements, setElements] = useState<Element[]>(() => loadFromLocalStorage(STORAGE_KEYS.ELEMENTS));
+  const [steelLengths, setSteelLengths] = useState<SteelLength[]>(() => loadFromLocalStorage(STORAGE_KEYS.STEELLENGTHS));
   const [name, setName] = useState<string>("");
-  const [width, setWidth] = useState<string>("");
   const [length, setLength] = useState<string>("");
   const [editedName, setEditedName] = useState<string>("");
-  const [editedWidth, setEditedWidth] = useState<string>("");
   const [editedLength, setEditedLength] = useState<string>("");
   const [beingEdited, setBeingEdited] = useState<string>("");
-  const { sortedItems, handleSort } = useSort<Element>(elements, "length");
+  const { sortedItems, handleSort } = useSort<SteelLength>(steelLengths, "length");
+
   useEffect(() => {
-    saveToLocalStorage(STORAGE_KEYS.ELEMENTS, elements);
-  }, [elements]);
+    saveToLocalStorage(STORAGE_KEYS.STEELLENGTHS, steelLengths);
+  }, [steelLengths]);
 
-  const addElement = () => {
-    const updatedElements = addSheetOrElement(width, length, name, elements);
+  const addNewSteelLength = () => {
+    const updatedSteelLengths = addSteelLengthOrSteelLengthElement(length, name, steelLengths);
 
-    setElements(updatedElements);
+    setSteelLengths(updatedSteelLengths);
 
     setName("");
-    setWidth("");
     setLength("");
   };
 
-  const SaveEditedElement = () => {
-    const updatedElements = saveSheetOrElement(width, length, name, elements, beingEdited);
+  const SaveEditedSteelLength = () => {
+    const updatedSteelLengths = saveSteelLengthOrSteelLengthElement(length, name, steelLengths, beingEdited);
 
-    setElements(updatedElements);
+    setSteelLengths(updatedSteelLengths);
 
     setEditedName("");
-    setEditedWidth("");
     setEditedLength("");
     setBeingEdited("");
   };
@@ -47,17 +45,16 @@ export default function MyElements() {
   return (
     <div className="flex flex-col max-h-[calc(100vh-100px)]">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold p-4">{language === "da" ? "Mine emner" : "My elements"}</h1>
+        <h1 className="text-2xl font-bold p-4">{language === "da" ? "Mine stål længder" : "My steel Lengths"}</h1>
         <p className="pl-4 pr-4 mb-8">
           {language === "da"
-            ? "På denne side kan du tilføje emner som du kontinuerligt kan genbruge når du udregner nesting. Vær opmærksom på at Længde altid vil ende med at være det største tal"
-            : "On this page you can add elements that you can continuously reuse when calculating nestings. Take note that Length will always end up the bigger number"}
+            ? "På denne side kan du tilføje stål længder som du kontinuerligt kan genbruge når du udregner nesting."
+            : "On this page you can add steel lengths that you can continuously reuse when calculating nestings."}
         </p>
         <div className="flex flex-col sm:flex-row gap-2">
-          <Input placeholder={language === "da" ? "Emne navn" : "Element name"} value={name} onChange={(e) => setName(e.target.value)} />
+          <Input placeholder={language === "da" ? "Stål længde navn" : "Steel length name"} value={name} onChange={(e) => setName(e.target.value)} />
           <Input placeholder={language === "da" ? "Længde (mm)" : "Length (mm)"} type="number" value={length} onChange={(e) => setLength(e.target.value)} />
-          <Input placeholder={language === "da" ? "Bredde (mm)" : "Width (mm)"} type="number" value={width} onChange={(e) => setWidth(e.target.value)} />
-          <Button disabled={name === "" || length === "" || width === "" || !name || !width || !length} variant="secondary" onClick={addElement}>
+          <Button disabled={name === "" || length === "" || !name || !length} variant="secondary" onClick={addNewSteelLength}>
             {language === "da" ? "Tilføj" : "Add"}
           </Button>
         </div>
@@ -73,24 +70,21 @@ export default function MyElements() {
                 </TableHead>
                 <TableHead onClick={() => handleSort("length")} className="cursor-pointer">
                   {language === "da" ? "Længde (mm)" : "Length (mm)"}
-                </TableHead>{" "}
-                <TableHead onClick={() => handleSort("width")} className="cursor-pointer">
-                  {language === "da" ? "Bredde (mm)" : "Width (mm)"}
                 </TableHead>
                 <TableHead></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sortedItems.map((element) => {
-                const shouldEdit = element.id === beingEdited;
+              {sortedItems.map((steelLength) => {
+                const shouldEdit = steelLength.id === beingEdited;
 
                 return (
-                  <TableRow key={element.id}>
+                  <TableRow key={steelLength.id}>
                     <TableCell>
                       {shouldEdit ? (
-                        <Input className="max-w-40" placeholder={language === "da" ? "Emne navn" : "Element name"} value={editedName} onChange={(e) => setEditedName(e.target.value)} />
+                        <Input className="max-w-40" placeholder={language === "da" ? "Stål længde navn" : "Steel length name"} value={editedName} onChange={(e) => setEditedName(e.target.value)} />
                       ) : (
-                        element.name
+                        steelLength.name
                       )}
                     </TableCell>
                     <TableCell>
@@ -103,22 +97,16 @@ export default function MyElements() {
                           onChange={(e) => setEditedLength(e.target.value)}
                         />
                       ) : (
-                        element.length
+                        steelLength.length
                       )}
                     </TableCell>
-                    <TableCell>
-                      {shouldEdit ? (
-                        <Input className="max-w-40" placeholder={language === "da" ? "Bredde (mm)" : "Width (mm)"} type="number" value={editedWidth} onChange={(e) => setEditedWidth(e.target.value)} />
-                      ) : (
-                        element.width
-                      )}
-                    </TableCell>
+
                     <TableCell className="flex justify-end space-x-2">
-                      <Button className="mr-2" variant="destructive" size="sm" onClick={() => setElements(elements.filter((el) => el.id !== element.id))}>
+                      <Button className="mr-2" variant="destructive" size="sm" onClick={() => setSteelLengths(steelLengths.filter((el) => el.id !== steelLength.id))}>
                         {language === "da" ? "Slet" : "Remove"}
                       </Button>
                       {shouldEdit ? (
-                        <Button style={{ backgroundColor: "green", color: "white" }} variant="outline" size="sm" onClick={() => SaveEditedElement()}>
+                        <Button style={{ backgroundColor: "green", color: "white" }} variant="outline" size="sm" onClick={() => SaveEditedSteelLength()}>
                           {language === "da" ? "Gem" : "Save"}
                         </Button>
                       ) : (
@@ -126,10 +114,9 @@ export default function MyElements() {
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            setBeingEdited(element.id);
-                            setEditedName(element.name);
-                            setEditedWidth(element.width.toString());
-                            setEditedLength(element.length.toString());
+                            setBeingEdited(steelLength.id);
+                            setEditedName(steelLength.name);
+                            setEditedLength(steelLength.length.toString());
                           }}
                         >
                           {language === "da" ? "Rediger" : "Edit"}
