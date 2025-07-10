@@ -6,7 +6,7 @@ import { defineConfig } from "vite";
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  base: "/JH-Ultra-Nester",
+  base: "/JH-Ultra-Nester/",
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

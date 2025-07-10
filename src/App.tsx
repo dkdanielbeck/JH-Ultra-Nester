@@ -15,7 +15,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { RectangleHorizontal, Square, TableCellsMerge, Zap } from "lucide-react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { HashRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import MySheets from "@/pages/MySheets";
 import MyElements from "@/pages/MyElements";
@@ -23,6 +23,8 @@ import CalculateNesting from "@/pages/CalculateNesting";
 import { Button } from "./components/ui/button";
 import { useEffect, useState } from "react";
 import MyMachines from "./pages/MyMachines";
+import { Link } from "react-router-dom";
+
 type Sheet = {
   width: number;
   height: number;
@@ -147,10 +149,10 @@ function App() {
                   {menuItems.map((item) => (
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton asChild>
-                        <a href={item.path} className="flex items-center gap-2">
+                        <Link to={item.path} className="flex items-center gap-2">
                           <item.icon className="h-4 w-4" />
                           <span>{item.title}</span>
-                        </a>
+                        </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   ))}

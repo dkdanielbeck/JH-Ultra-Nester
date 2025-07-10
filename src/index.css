@@ -146,3 +146,7 @@ button {
   cursor: pointer;
   text-decoration: underline;
 }
+.checkbox {
+  cursor: pointer;
+  border: solid black 1px;
+}

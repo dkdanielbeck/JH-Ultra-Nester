@@ -3,43 +3,15 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { loadLanguage } from "@/App";
-
-export type Sheet = {
-  id: string;
-  name: string;
-  width: number;
-  length: number;
-};
-
-const STORAGE_KEY = "my-sheets";
-
-export function loadSheets(): Sheet[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch (e) {
-    console.error("Failed to load sheets:", e);
-    return [];
-  }
-}
-
-function saveSheets(sheets: Sheet[]) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(sheets));
-  } catch (e) {
-    console.error("Failed to save sheets:", e);
-  }
-}
+import { STORAGE_KEYS, type Sheet } from "@/lib/types";
+import { addSheetOrElement, loadFromLocalStorage, saveSheetOrElement, saveToLocalStorage } from "@/lib/utils";
+import { useSort } from "@/hooks/useSort";
 
 export default function MySheets() {
   const [language] = useState<string>(() => loadLanguage());
 
-  type SortKey = "name" | "width" | "length";
-  type SortOrder = "asc" | "desc";
+  const [sheets, setSheets] = useState<Sheet[]>(() => loadFromLocalStorage(STORAGE_KEYS.SHEETS));
 
-  const [sheets, setSheets] = useState<Sheet[]>(() => loadSheets());
-  const [sortKey, setSortKey] = useState<SortKey>("name");
-  const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
   const [name, setName] = useState<string>("");
   const [width, setWidth] = useState<string>("");
   const [length, setLength] = useState<string>("");
@@ -48,66 +20,23 @@ export default function MySheets() {
   const [editedLength, setEditedLength] = useState<string>("");
   const [beingEdited, setBeingEdited] = useState<string>("");
 
+  const { sortedItems, handleSort } = useSort<Sheet>(sheets, "length");
+
   useEffect(() => {
-    saveSheets(sheets);
+    saveToLocalStorage(STORAGE_KEYS.SHEETS, sheets);
   }, [sheets]);
 
   const addSheet = () => {
-    const largestNumberIsLength = parseInt(width) < parseInt(length) ? true : false;
-
-    const parsedWidth = parseInt(largestNumberIsLength ? width : length);
-    const parsedLength = parseInt(largestNumberIsLength ? length : width);
-
-    if (!name.trim() || isNaN(parsedWidth) || isNaN(parsedLength)) return;
-
-    // Check for duplicate name *with same dimensions*
-    const exists = sheets.some((sheet) => sheet.name.toLowerCase() === name.trim().toLowerCase() && sheet.width === parsedWidth && sheet.length === parsedLength);
-
-    if (exists) {
-      alert("An element with this name and size already exists.");
-      return;
-    }
-
-    const newSheet: Sheet = {
-      id: crypto.randomUUID(),
-      name: name.trim(),
-      width: parsedWidth,
-      length: parsedLength,
-    };
-
-    const updatedSheets = [...sheets, newSheet];
+    const updatedSheets = addSheetOrElement(width, length, name, sheets);
     setSheets(updatedSheets);
 
-    // Clear input fields
     setName("");
     setWidth("");
     setLength("");
   };
+
   const SaveEditedSheet = () => {
-    const largestNumberIsLength = parseInt(editedWidth) < parseInt(editedLength) ? true : false;
-
-    const parsedWidth = parseInt(largestNumberIsLength ? editedWidth : editedLength);
-    const parsedLength = parseInt(largestNumberIsLength ? editedLength : editedWidth);
-
-    if (!editedName.trim() || isNaN(parsedWidth) || isNaN(parsedLength)) return;
-
-    const exists = sheets.some((sheet) => sheet.name.toLowerCase() === editedName.trim().toLowerCase() && sheet.width === parsedWidth && sheet.length === parsedLength && sheet.id !== beingEdited);
-
-    if (exists) {
-      alert("A sheet with this name and size already exists.");
-      return;
-    }
-
-    const newSheet: Sheet = {
-      id: beingEdited,
-      name: editedName.trim(),
-      width: parsedWidth,
-      length: parsedLength,
-    };
-
-    const updatedSheets = sheets.map((sheet) => {
-      return sheet.id === beingEdited ? newSheet : sheet;
-    });
+    const updatedSheets = saveSheetOrElement(width, length, name, sheets, beingEdited);
 
     setSheets(updatedSheets);
 
@@ -116,34 +45,6 @@ export default function MySheets() {
     setEditedLength("");
     setBeingEdited("");
   };
-
-  const removeSheet = (id: string) => {
-    setSheets(sheets.filter((el) => el.id !== id));
-  };
-
-  const handleSort = (key: SortKey) => {
-    if (sortKey === key) {
-      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
-    } else {
-      setSortKey(key);
-      setSortOrder("asc");
-    }
-  };
-
-  const sortedSheets = [...sheets].sort((a, b) => {
-    const aVal = a[sortKey];
-    const bVal = b[sortKey];
-
-    if (typeof aVal === "string" && typeof bVal === "string") {
-      return sortOrder === "asc" ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
-    }
-
-    if (typeof aVal === "number" && typeof bVal === "number") {
-      return sortOrder === "asc" ? aVal - bVal : bVal - aVal;
-    }
-
-    return 0;
-  });
 
   return (
     <div className="flex flex-col max-h-[calc(100vh-100px)]">
@@ -164,7 +65,7 @@ export default function MySheets() {
         </div>
       </div>
 
-      {sortedSheets.length !== 0 && (
+      {sortedItems.length !== 0 && (
         <div style={{ borderRadius: "10px" }} className="flex-grow overflow-auto p-4 bg-muted max-h-[calc(70vh)]">
           <Table>
             <TableHeader className="top-0 bg-muted z-10">
@@ -182,7 +83,7 @@ export default function MySheets() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sortedSheets.map((sheet) => {
+              {sortedItems.map((sheet) => {
                 const shouldEdit = sheet.id === beingEdited;
                 return (
                   <TableRow key={sheet.id}>
@@ -214,7 +115,7 @@ export default function MySheets() {
                       )}
                     </TableCell>
                     <TableCell className="flex justify-end space-x-2">
-                      <Button className="mr-2" variant="destructive" size="sm" onClick={() => removeSheet(sheet.id)}>
+                      <Button className="mr-2" variant="destructive" size="sm" onClick={() => setSheets(sheets.filter((el) => el.id !== sheet.id))}>
                         {language === "da" ? "Slet" : "Remove"}
                       </Button>
                       {shouldEdit ? (

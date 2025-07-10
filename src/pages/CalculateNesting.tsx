@@ -1,54 +1,19 @@
 import { loadLanguage } from "@/App";
 import { useState } from "react";
-import { loadElements } from "./MyElements";
-import type { Element } from "./MyElements";
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { loadSheets, type Sheet } from "./MySheets";
 import { Input } from "@/components/ui/input";
-import { MaxRectsPacker, Rectangle, PACKING_LOGIC } from "maxrects-packer";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Loader2Icon, ShieldAlert } from "lucide-react";
-import { loadMachines, type MachineProfile } from "./MyMachines";
-interface PlacedRect {
-  element: Element;
-  x: number;
-  y: number;
-  width: number;
-  length: number;
-
-  rotated: boolean;
-}
-interface SheetLayout {
-  sheetId: string;
-  sheetName: string;
-  sheetSize: string;
-  sheetArea: number;
-  width: number;
-  length: number;
-  rectangles: PlacedRect[];
-}
-type SheetCount = Record<string, number>;
-
-type DPResult = {
-  totalArea: number;
-  counts: SheetCount;
-  layouts: SheetLayout[];
-};
-
-interface NestingResults {
-  sheets: { sheetName: string; sheetSize: string; count: number; sheetArea: number }[];
-  layouts: SheetLayout[];
-  totalMaterialArea: number;
-  totalElementsArea: number;
-  totalWaste: number;
-}
+import { Link } from "react-router-dom";
+import { type Sheet, type MachineProfile, type Element, STORAGE_KEYS, type NestingResults } from "@/lib/types";
+import { findBest, loadFromLocalStorage } from "@/lib/utils";
 
 export default function CalculateNesting() {
   const [language] = useState<string>(() => loadLanguage());
-  const [elements] = useState<Element[]>(() => loadElements());
-  const [sheets] = useState<Sheet[]>(() => loadSheets());
-  const [machines] = useState<MachineProfile[]>(() => loadMachines());
+  const [elements] = useState<Element[]>(() => loadFromLocalStorage(STORAGE_KEYS.ELEMENTS));
+  const [sheets] = useState<Sheet[]>(() => loadFromLocalStorage(STORAGE_KEYS.SHEETS));
+  const [machines] = useState<MachineProfile[]>(() => loadFromLocalStorage(STORAGE_KEYS.MACHINES));
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [endResults, setEndResults] = useState<NestingResults>({
@@ -88,115 +53,6 @@ export default function CalculateNesting() {
     });
   };
 
-  function packOneSheet(sheet: Sheet, elements: Element[]): MaxRectsPacker<Rectangle> {
-    const sheetWidth = sheet.width;
-    const sheetLength = sheet.length;
-
-    const canFit = elements.filter((element) => (element.width <= sheetWidth && element.length <= sheetLength) || (element.length <= sheetWidth && element.width <= sheetLength));
-    if (canFit.length === 0) {
-      //@ts-ignore
-      return {};
-    }
-
-    const packer = new MaxRectsPacker(sheetWidth, sheetLength, selectedProfile ? selectedProfile.margin : 10, {
-      smart: true,
-      pot: false,
-      square: false,
-      allowRotation: true,
-      logic: PACKING_LOGIC.MAX_AREA,
-      border: selectedProfile ? selectedProfile.border : 10,
-    });
-    packer.addArray(
-      canFit.map((element) => ({
-        width: element.width,
-        height: element.length,
-        data: element,
-      })) as unknown as Rectangle[]
-    );
-
-    return packer;
-  }
-
-  function findBest(elements: Element[], memory = new Map<string, DPResult>(), bestSoFar = Infinity): DPResult {
-    if (elements.length === 0) {
-      return { totalArea: 0, counts: {}, layouts: [] };
-    }
-
-    const key = elements
-      .map((element) => element.id)
-      .sort()
-      .join("|");
-    if (memory.has(key)) {
-      return memory.get(key)!;
-    }
-
-    let best: DPResult = { totalArea: Infinity, counts: {}, layouts: [] };
-
-    for (const sheet of [...selectedSheets].sort((a, b) => b.width * b.length - a.width * a.length)) {
-      if (!elements.some((element) => (element.width <= sheet.width && element.length <= sheet.length) || (element.length <= sheet.width && element.width <= sheet.length))) {
-        continue;
-      }
-
-      const packer = packOneSheet(sheet, elements);
-
-      const placedElements = packer.bins[0].rects.map((rectangle) => rectangle.data as Element);
-
-      const bin = packer.bins[0];
-      const thisLayout: PlacedRect[] = bin.rects.map((rect) => {
-        const el = rect.data as Element;
-        return {
-          element: el,
-          x: rect.x,
-          y: rect.y,
-          width: rect.width,
-          length: rect.height,
-          rotated: rect.rot,
-        };
-      });
-
-      if (placedElements.length === 0) continue;
-
-      const remaining = elements.slice();
-      for (const placedElement of placedElements) {
-        const idx = remaining.findIndex((element) => element.id === placedElement.id);
-        remaining.splice(idx, 1);
-      }
-
-      const sheetArea = sheet.width * sheet.length;
-      if (sheetArea >= bestSoFar) continue;
-
-      // recurse
-      const bestFound = findBest(remaining, memory, bestSoFar - sheetArea);
-
-      const total = sheetArea + bestFound.totalArea;
-      if (total < best.totalArea) {
-        best = {
-          totalArea: total,
-          counts: {
-            ...bestFound.counts,
-            [sheet.id]: (bestFound.counts[sheet.id] || 0) + 1,
-          },
-          layouts: [
-            {
-              sheetId: sheet.id,
-              sheetName: sheet.name,
-              sheetSize: `${sheet.length}×${sheet.width}`,
-              sheetArea,
-              width: sheet.width,
-              length: sheet.length,
-              rectangles: thisLayout,
-            },
-            ...bestFound.layouts,
-          ],
-        };
-        bestSoFar = total;
-      }
-    }
-
-    memory.set(key, best);
-    return best;
-  }
-
   const getResults = () => {
     setIsLoading(true);
     setTimeout(() => {
@@ -210,7 +66,7 @@ export default function CalculateNesting() {
         }))
       );
 
-      const best = findBest(relevantElements);
+      const best = findBest(relevantElements, selectedSheets, selectedProfile);
 
       const results = selectedSheets
         .map((sheet) => ({
@@ -234,26 +90,27 @@ export default function CalculateNesting() {
       setIsLoading(false);
     }, 0);
   };
-  console.log(endResults);
 
   return (
-    <div className="flex flex-col max-h-[calc(100vh-100px)]">
+    <div className="flex max-h-[calc(100vh-100px)]">
       <div className="p-4 mb-2">
         <h1 className="text-2xl font-bold mb-4">{language === "da" ? "Udregn nesting" : "Calculate nesting"}</h1>
-        <p className="mb-12">
+        <p className="mb-4">
           {language === "da"
             ? "På denne side kan du vælge hvilke plader og hvilke emner du ønsker at udregne nesting med"
             : "On this page you can select which sheets and which elements you wish to use to calculate nesting"}
         </p>
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex flex-col gap-6">
+
+        <div className="flex flex-col gap-4 max-w-[calc(40vw)]">
+          <div className="flex flex-row gap-6 max-w-[calc(40vw)]">
             {elements.length === 0 ? (
               <div className="flex">
                 <ShieldAlert className="h-6 w-6 mr-2" />
                 <p className="mr-2">{language === "da" ? "Du har ikke oprettet nogen emner endnu." : "You have not yet created any elements."}</p>
-                <a href={"/elements"} className="link">
+
+                <Link to={"/elements"} className="flex items-center gap-2 link">
                   <span>{language === "da" ? "Opret emner her" : "Create elements here"}</span>
-                </a>
+                </Link>
               </div>
             ) : sheets.length === 0 || machines.length === 0 ? (
               <></>
@@ -279,9 +136,9 @@ export default function CalculateNesting() {
               <div className="flex">
                 <ShieldAlert className="h-6 w-6 mr-2" />
                 <p className="mr-2">{language === "da" ? "Du har ikke oprettet nogen plader endnu." : "You have not yet created any sheets."}</p>
-                <a href={"/sheets"} className="link">
+                <Link to={"/sheets"} className="link">
                   <span>{language === "da" ? "Opret plader her" : "Create sheets here"}</span>
-                </a>
+                </Link>
               </div>
             ) : elements.length === 0 || machines.length === 0 ? (
               <></>
@@ -303,9 +160,9 @@ export default function CalculateNesting() {
               <div className="flex">
                 <ShieldAlert className="h-6 w-6 mr-2" />
                 <p className="mr-2">{language === "da" ? "Du har ikke oprettet nogen maskiner endnu." : "You have not yet created any machines."}</p>
-                <a href={"/machines"} className="link">
+                <Link to={"/machines"} className="link">
                   <span>{language === "da" ? "Opret maskiner her" : "Create machines here"}</span>
-                </a>
+                </Link>
               </div>
             ) : sheets.length === 0 || elements.length === 0 ? (
               <></>
@@ -325,17 +182,15 @@ export default function CalculateNesting() {
             )}
 
             {machines.length !== 0 && sheets.length !== 0 && elements.length !== 0 && (
-              <Button
-                style={{ marginTop: "43px" }}
-                disabled={isLoading || selectedSheets?.length === 0 || selectedElements?.length === 0 || selectedProfile === undefined}
-                onClick={() => getResults()}
-              >
-                {isLoading ? <Loader2Icon className="animate-spin" /> : language === "da" ? "Udregn nesting" : "Calculate nesting"}
-              </Button>
+              <div className="ml-auto">
+                <Button disabled={isLoading || selectedSheets?.length === 0 || selectedElements?.length === 0 || selectedProfile === undefined} onClick={() => getResults()}>
+                  {isLoading ? <Loader2Icon className="animate-spin" /> : language === "da" ? "Udregn nesting" : "Calculate nesting"}
+                </Button>
+              </div>
             )}
           </div>
           {selectedElements.length !== 0 && (
-            <div style={{ borderRadius: "10px" }} className="flex-grow overflow-auto p-4 bg-muted max-h-[calc(20vh)] min-h-[calc(20vh)] ">
+            <div style={{ borderRadius: "10px" }} className="flex-grow overflow-auto p-4 bg-muted max-h-[calc(70vh)]">
               <Table>
                 <TableHeader className="top-0 bg-muted z-10">
                   <TableRow>
@@ -369,7 +224,7 @@ export default function CalculateNesting() {
                             }
                           />
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="flex justify-end space-x-2">
                           <Button disabled={isLoading} variant="destructive" size="sm" onClick={() => removeElement(selectedElement.id)}>
                             {language === "da" ? "Slet" : "Remove"}
                           </Button>
@@ -383,65 +238,66 @@ export default function CalculateNesting() {
           )}
         </div>
       </div>
+      <div className="flex-grow pl-4 pr-4 max-w-[calc(47vw)]">
+        {endResults.sheets.length !== 0 && selectedElements.length !== 0 && selectedSheets.length !== 0 && (
+          <div className="p-4">
+            <h2 className="text-xl font-semibold mb-4">{language === "da" ? "Resultat" : "Result"}</h2>
+            <ul className="list-disc list-inside space-y-1">
+              {endResults.sheets.map((sheet, index) => (
+                <li key={index}>{language === "da" ? `Brug ${sheet.count} stk. ${sheet.sheetName} (${sheet.sheetSize})` : `Use ${sheet.count} sheet(s) of ${sheet.sheetName} (${sheet.sheetSize})`}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <>
+          {endResults.layouts.length > 0 && <h2 className="text-xl font-semibold mb-2 pl-4 mt-4">{language === "da" ? "Visualiseret" : "Visualized"}</h2>}
 
-      {endResults.sheets.length !== 0 && selectedElements.length !== 0 && selectedSheets.length !== 0 && (
-        <div className="p-4">
-          <h2 className="text-xl font-semibold mb-2">{language === "da" ? "Resultat" : "Result"}</h2>
-          <ul className="list-disc list-inside space-y-1">
-            {endResults.sheets.map((sheet, index) => (
-              <li key={index}>{language === "da" ? `Brug ${sheet.count} stk. ${sheet.sheetName} (${sheet.sheetSize})` : `Use ${sheet.count} sheet(s) of ${sheet.sheetName} (${sheet.sheetSize})`}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-      <>
-        {endResults.layouts.length > 0 && <h2 className="text-xl font-semibold mb-2 pl-4 mt-4">{language === "da" ? "Visulaiseret" : "Visualized"}</h2>}
+          {endResults.layouts.length > 0 &&
+            (() => {
+              const MAX_DIM = 450;
 
-        {endResults.layouts.length > 0 &&
-          (() => {
-            const MAX_DIM = 500;
+              // 1) find the largest sheet in your result set
+              const maxW = Math.max(...endResults.layouts.map((l) => l.width));
+              const maxH = Math.max(...endResults.layouts.map((l) => l.length));
 
-            // 1) find the largest sheet in your result set
-            const maxW = Math.max(...endResults.layouts.map((l) => l.width));
-            const maxH = Math.max(...endResults.layouts.map((l) => l.length));
+              // 2) one single global scale factor
+              const globalScale = Math.min(MAX_DIM / maxW, MAX_DIM / maxH);
 
-            // 2) one single global scale factor
-            const globalScale = Math.min(MAX_DIM / maxW, MAX_DIM / maxH);
+              return (
+                <div style={{ borderRadius: "10px" }} className="flex flex-wrap gap-4 overflow-auto p-4 bg-muted max-h-[calc(70vh)]">
+                  {endResults.layouts.map((layout, i) => {
+                    const w = layout.width * globalScale;
+                    const h = layout.length * globalScale;
+                    const stroke = 4;
+                    const inset = stroke / 2;
 
-            return (
-              <div className="flex flex-wrap gap-4 overflow-auto p-4 border">
-                {endResults.layouts.map((layout, i) => {
-                  const w = layout.width * globalScale;
-                  const h = layout.length * globalScale;
-                  const stroke = 4;
-                  const inset = stroke / 2;
-
-                  return (
-                    <div key={i} className="mb-4">
-                      <h3 className="text-lg font-semibold mb-2">
-                        {layout.sheetName} ({layout.sheetSize})
-                      </h3>
-                      <svg className="sheet" width={w} height={h} viewBox={`0 0 ${layout.width} ${layout.length}`}>
-                        {layout.rectangles.map((r, idx) => (
-                          <rect
-                            key={idx}
-                            x={r.x + inset}
-                            y={r.y + inset}
-                            width={(r.rotated ? r.length : r.width) - stroke}
-                            height={(r.rotated ? r.width : r.length) - stroke}
-                            fill="#009eba"
-                            stroke="#0F47A1"
-                            strokeWidth={stroke}
-                          />
-                        ))}
-                      </svg>
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })()}
-      </>
+                    return (
+                      <div key={i} className="mb-4">
+                        <h3 className="text-lg font-semibold mb-2">
+                          {layout.sheetName} ({layout.sheetSize})
+                        </h3>
+                        <svg className="sheet" width={w} height={h} viewBox={`0 0 ${layout.width} ${layout.length}`}>
+                          {layout.rectangles.map((r, idx) => (
+                            <rect
+                              key={idx}
+                              x={r.x + inset}
+                              y={r.y + inset}
+                              width={(r.rotated ? r.length : r.width) - stroke}
+                              height={(r.rotated ? r.width : r.length) - stroke}
+                              fill="#009eba"
+                              stroke="#0F47A1"
+                              strokeWidth={stroke}
+                            />
+                          ))}
+                        </svg>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+        </>
+      </div>
     </div>
   );
 }

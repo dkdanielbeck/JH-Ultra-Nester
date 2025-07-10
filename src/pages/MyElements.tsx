@@ -3,43 +3,14 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { loadLanguage } from "@/App";
-
-export type Element = {
-  id: string;
-  name: string;
-  width: number;
-  length: number;
-  instanceId?: string;
-};
-
-const STORAGE_KEY = "my-elements";
-
-export function loadElements(): Element[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch (e) {
-    console.error("Failed to load elements:", e);
-    return [];
-  }
-}
-
-function saveElements(elements: Element[]) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(elements));
-  } catch (e) {
-    console.error("Failed to save elements:", e);
-  }
-}
+import { STORAGE_KEYS, type Element } from "@/lib/types";
+import { addSheetOrElement, loadFromLocalStorage, saveSheetOrElement, saveToLocalStorage } from "@/lib/utils";
+import { useSort } from "@/hooks/useSort";
 
 export default function MyElements() {
-  type SortKey = "name" | "width" | "length";
-  type SortOrder = "asc" | "desc";
   const [language] = useState<string>(() => loadLanguage());
 
-  const [elements, setElements] = useState<Element[]>(() => loadElements());
-  const [sortKey, setSortKey] = useState<SortKey>("name");
-  const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
+  const [elements, setElements] = useState<Element[]>(() => loadFromLocalStorage(STORAGE_KEYS.ELEMENTS));
   const [name, setName] = useState<string>("");
   const [width, setWidth] = useState<string>("");
   const [length, setLength] = useState<string>("");
@@ -47,107 +18,31 @@ export default function MyElements() {
   const [editedWidth, setEditedWidth] = useState<string>("");
   const [editedLength, setEditedLength] = useState<string>("");
   const [beingEdited, setBeingEdited] = useState<string>("");
-
+  const { sortedItems, handleSort } = useSort<Element>(elements, "length");
   useEffect(() => {
-    saveElements(elements);
+    saveToLocalStorage(STORAGE_KEYS.ELEMENTS, elements);
   }, [elements]);
 
   const addElement = () => {
-    const largestNumberIsLength = parseInt(width) < parseInt(length) ? true : false;
+    const updatedElements = addSheetOrElement(width, length, name, elements);
 
-    const parsedWidth = parseInt(largestNumberIsLength ? width : length);
-    const parsedLength = parseInt(largestNumberIsLength ? length : width);
-
-    if (!name.trim() || isNaN(parsedWidth) || isNaN(parsedLength)) return;
-
-    // Check for duplicate name *with same dimensions*
-    const exists = elements.some((element) => element.name.toLowerCase() === name.trim().toLowerCase() && element.width === parsedWidth && element.length === parsedLength);
-
-    if (exists) {
-      alert("An element with this name and size already exists.");
-      return;
-    }
-
-    const newElement: Element = {
-      id: crypto.randomUUID(),
-      name: name.trim(),
-      width: parsedWidth,
-      length: parsedLength,
-    };
-
-    const updatedElements = [...elements, newElement];
     setElements(updatedElements);
 
-    // Clear input fields
     setName("");
     setWidth("");
     setLength("");
   };
 
   const SaveEditedElement = () => {
-    const largestNumberIsLength = parseInt(editedWidth) < parseInt(editedLength) ? true : false;
-
-    const parsedWidth = parseInt(largestNumberIsLength ? editedWidth : editedLength);
-    const parsedLength = parseInt(largestNumberIsLength ? editedLength : editedWidth);
-
-    if (!editedName.trim() || isNaN(parsedWidth) || isNaN(parsedLength)) return;
-
-    const exists = elements.some(
-      (element) => element.name.toLowerCase() === editedName.trim().toLowerCase() && element.width === parsedWidth && element.length === parsedLength && element.id !== beingEdited
-    );
-
-    if (exists) {
-      alert("An element with this name and size already exists.");
-      return;
-    }
-
-    const newElement: Element = {
-      id: beingEdited,
-      name: editedName.trim(),
-      width: parsedWidth,
-      length: parsedLength,
-    };
-
-    const updatedElements = elements.map((element) => {
-      return element.id === beingEdited ? newElement : element;
-    });
+    const updatedElements = saveSheetOrElement(width, length, name, elements, beingEdited);
 
     setElements(updatedElements);
 
-    // Clear input fields
     setEditedName("");
     setEditedWidth("");
     setEditedLength("");
     setBeingEdited("");
   };
-
-  const removeElement = (id: string) => {
-    setElements(elements.filter((el) => el.id !== id));
-  };
-
-  const handleSort = (key: SortKey) => {
-    if (sortKey === key) {
-      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
-    } else {
-      setSortKey(key);
-      setSortOrder("asc");
-    }
-  };
-
-  const sortedElements = [...elements].sort((a, b) => {
-    const aVal = a[sortKey];
-    const bVal = b[sortKey];
-
-    if (typeof aVal === "string" && typeof bVal === "string") {
-      return sortOrder === "asc" ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
-    }
-
-    if (typeof aVal === "number" && typeof bVal === "number") {
-      return sortOrder === "asc" ? aVal - bVal : bVal - aVal;
-    }
-
-    return 0;
-  });
 
   return (
     <div className="flex flex-col max-h-[calc(100vh-100px)]">
@@ -168,7 +63,7 @@ export default function MyElements() {
         </div>
       </div>
 
-      {sortedElements.length !== 0 && (
+      {sortedItems.length !== 0 && (
         <div style={{ borderRadius: "10px" }} className="flex-grow overflow-auto p-4 bg-muted max-h-[calc(70vh)]">
           <Table>
             <TableHeader className="top-0 bg-muted z-10">
@@ -186,7 +81,7 @@ export default function MyElements() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sortedElements.map((element) => {
+              {sortedItems.map((element) => {
                 const shouldEdit = element.id === beingEdited;
 
                 return (
@@ -219,7 +114,7 @@ export default function MyElements() {
                       )}
                     </TableCell>
                     <TableCell className="flex justify-end space-x-2">
-                      <Button className="mr-2" variant="destructive" size="sm" onClick={() => removeElement(element.id)}>
+                      <Button className="mr-2" variant="destructive" size="sm" onClick={() => setElements(elements.filter((el) => el.id !== element.id))}>
                         {language === "da" ? "Slet" : "Remove"}
                       </Button>
                       {shouldEdit ? (
