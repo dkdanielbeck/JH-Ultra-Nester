@@ -250,7 +250,7 @@ export default function CalculateNesting() {
           </div>
         )}
         <>
-          {endResults.layouts.length > 0 && <h2 className="text-xl font-semibold mb-2 pl-4 mt-4">{language === "da" ? "Visualiseret" : "Visualized"}</h2>}
+          {endResults.layouts.length > 0 && <h2 className="text-xl font-semibold mb-2 pl-4 mt-4">{language === "da" ? "visualiseret" : "Visualized"}</h2>}
 
           {endResults.layouts.length > 0 &&
             (() => {
