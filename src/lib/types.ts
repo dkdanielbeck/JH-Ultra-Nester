@@ -78,10 +78,40 @@ export type DPResult = {
   layouts: SheetLayout[];
 };
 
-export interface SheetNestingResults {
-  sheets: { sheetName: string; sheetSize: string; count: number; sheetArea: number }[];
+export interface NestingResults {
+  nestingParent: { name: string; size: string; count: number; area: number }[];
   layouts: SheetLayout[];
   totalMaterialArea: number;
-  totalSheetElementsArea: number;
+  totalElementsArea: number;
   totalWaste: number;
+}
+
+export type InputField = "name" | "width" | "length" | "margin" | "border";
+
+export const InputFieldValues: Record<InputField, InputField> = {
+  name: "name",
+  width: "width",
+  length: "length",
+  margin: "margin",
+  border: "border",
+};
+
+export type ComponentName = "mySheetElements" | "mySheets" | "mySteelLengths" | "mySteelLengthElements" | "myMachines" | "calculateSheetNesting" | "calculateLengthNesting";
+
+export const ComponentNames: Record<ComponentName, ComponentName> = {
+  mySheetElements: "mySheetElements",
+  mySheets: "mySheets",
+  mySteelLengths: "mySteelLengths",
+  mySteelLengthElements: "mySteelLengthElements",
+  myMachines: "myMachines",
+  calculateSheetNesting: "calculateSheetNesting",
+  calculateLengthNesting: "calculateLengthNesting",
+};
+
+export interface SavedNestingConfiguration {
+  selectedElements: SheetElement[] | SteelLengthElement[];
+  selectedParents: Sheet[] | SteelLength[];
+  selectedProfileId: string | undefined;
+  quantities: Record<string, number>;
+  endResults: NestingResults;
 }

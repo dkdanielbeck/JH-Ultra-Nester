@@ -4,18 +4,18 @@ import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { loadLanguage } from "@/App";
 import { Checkbox } from "@/components/ui/checkbox";
-import { STORAGE_KEYS, type MachineProfile } from "@/lib/types";
+import { ComponentNames, InputFieldValues, STORAGE_KEYS, type MachineProfile } from "@/lib/types";
 import { useSort } from "@/hooks/useSort";
-import { loadFromLocalStorage, saveToLocalStorage } from "@/lib/utils-local-storage";
+import { clearInputsFromLocalStorage, loadItemsFromLocalStorage, loadInputFromLocalStorage, saveInputToLocalStorage, saveItemsToLocalStorage } from "@/lib/utils-local-storage";
 import { addMachine, saveMachine } from "@/lib/utils-machines";
 
 export default function MySheetMachines() {
   const [language] = useState<string>(() => loadLanguage());
 
-  const [machines, setMachines] = useState<MachineProfile[]>(() => loadFromLocalStorage(STORAGE_KEYS.MACHINES));
-  const [name, setName] = useState("");
-  const [border, setBorder] = useState("");
-  const [margin, setMargin] = useState("");
+  const [machines, setMachines] = useState<MachineProfile[]>(() => loadItemsFromLocalStorage(STORAGE_KEYS.MACHINES));
+  const [name, setName] = useState(loadInputFromLocalStorage(InputFieldValues.name, ComponentNames.myMachines) || "");
+  const [border, setBorder] = useState(loadInputFromLocalStorage(InputFieldValues.border, ComponentNames.myMachines) || "");
+  const [margin, setMargin] = useState(loadInputFromLocalStorage(InputFieldValues.margin, ComponentNames.myMachines) || "");
   const [editedName, setEditedName] = useState<string>("");
   const [editedBorder, setEditedBorder] = useState<string>("");
   const [editedMargin, setEditedMargin] = useState<string>("");
@@ -23,7 +23,7 @@ export default function MySheetMachines() {
   const { sortedItems, handleSort } = useSort<MachineProfile>(machines, "machineName");
 
   useEffect(() => {
-    saveToLocalStorage(STORAGE_KEYS.MACHINES, machines);
+    saveItemsToLocalStorage(STORAGE_KEYS.MACHINES, machines);
   }, [machines]);
 
   const addNewMachine = () => {
@@ -34,6 +34,14 @@ export default function MySheetMachines() {
     setName("");
     setBorder("");
     setMargin("");
+    clearInputsFromLocalStorage([InputFieldValues.name, InputFieldValues.border, InputFieldValues.margin], ComponentNames.myMachines);
+  };
+
+  const clearInputs = () => {
+    setName("");
+    setBorder("");
+    setMargin("");
+    clearInputsFromLocalStorage([InputFieldValues.name, InputFieldValues.border, InputFieldValues.margin], ComponentNames.myMachines);
   };
 
   const SaveEditedMachine = () => {
@@ -83,9 +91,35 @@ export default function MySheetMachines() {
             : "On this page you can add machines with defined margin and border that you can continuously reuse when calculating nestings."}
         </p>
         <div className="flex flex-col sm:flex-row gap-2">
-          <Input placeholder={language === "da" ? "Maskine navn" : "Machine name"} value={name} onChange={(e) => setName(e.target.value)} />
-          <Input placeholder={language === "da" ? "Margen (mm)" : "Margin (mm)"} type="number" value={margin} onChange={(e) => setMargin(e.target.value)} />
-          <Input placeholder={language === "da" ? "Kant (mm)" : "Border (mm)"} type="number" value={border} onChange={(e) => setBorder(e.target.value)} />
+          <Input
+            placeholder={language === "da" ? "Maskine navn" : "Machine name"}
+            value={name}
+            onChange={(e) => {
+              setName(e.target.value);
+              saveInputToLocalStorage(InputFieldValues.name, e.target.value, ComponentNames.myMachines);
+            }}
+          />
+          <Input
+            placeholder={language === "da" ? "Margen (mm)" : "Margin (mm)"}
+            type="number"
+            value={margin}
+            onChange={(e) => {
+              setMargin(e.target.value);
+              saveInputToLocalStorage(InputFieldValues.margin, e.target.value, ComponentNames.myMachines);
+            }}
+          />
+          <Input
+            placeholder={language === "da" ? "Kant (mm)" : "Border (mm)"}
+            type="number"
+            value={border}
+            onChange={(e) => {
+              setBorder(e.target.value);
+              saveInputToLocalStorage(InputFieldValues.border, e.target.value, ComponentNames.myMachines);
+            }}
+          />
+          <Button disabled={(name === "" && margin === "" && border === "") || (!name && !border && !margin)} variant="ghost" onClick={clearInputs}>
+            {language === "da" ? "Ryd" : "Clear"}
+          </Button>
           <Button disabled={name === "" || margin === "" || border === "" || !name || !border || !margin} variant="secondary" onClick={addNewMachine}>
             {language === "da" ? "Tilføj" : "Add"}
           </Button>

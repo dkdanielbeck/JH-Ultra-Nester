@@ -1,30 +1,47 @@
 import { loadLanguage } from "@/App";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Loader2Icon, ShieldAlert } from "lucide-react";
 import { Link } from "react-router-dom";
-import { STORAGE_KEYS, type SteelLength, type SteelLengthElement, type SheetNestingResults } from "@/lib/types";
-import { loadFromLocalStorage } from "@/lib/utils-local-storage";
+import { STORAGE_KEYS, type SteelLength, type SteelLengthElement, type NestingResults, ComponentNames } from "@/lib/types";
+import { loadItemsFromLocalStorage, loadNestingConfigurationFromLocalStorage, saveNestingConfigurationToLocalStorage } from "@/lib/utils-local-storage";
 import { findBest } from "@/lib/utils-nesting";
 
 export default function CalculateLengthNesting() {
+  const savedConfig = loadNestingConfigurationFromLocalStorage(ComponentNames.calculateLengthNesting);
+
   const [language] = useState<string>(() => loadLanguage());
-  const [steelLengthElements] = useState<SteelLengthElement[]>(() => loadFromLocalStorage(STORAGE_KEYS.STEELLENGTHELEMENTS));
-  const [steelLengths] = useState<SteelLength[]>(() => loadFromLocalStorage(STORAGE_KEYS.STEELLENGTHS));
-  const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [steelLengthElements] = useState<SteelLengthElement[]>(() => loadItemsFromLocalStorage(STORAGE_KEYS.STEELLENGTHELEMENTS));
+  const [steelLengths] = useState<SteelLength[]>(() => loadItemsFromLocalStorage(STORAGE_KEYS.STEELLENGTHS));
+  const [quantities, setQuantities] = useState<Record<string, number>>(savedConfig?.quantities || {});
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [endResults, setEndResults] = useState<SheetNestingResults>({
-    sheets: [],
-    totalMaterialArea: 0,
-    totalSheetElementsArea: 0,
-    totalWaste: 0,
-    layouts: [],
-  });
-  const [selectedSteelLengthElements, setSelectedSteelLengthElements] = useState<SteelLengthElement[]>([]);
-  const [selectedSteelLengths, setSelectedSteelLengths] = useState<SteelLength[]>(steelLengths);
+  const [endResults, setEndResults] = useState<NestingResults>(
+    savedConfig?.endResults || {
+      nestingParent: [],
+      totalMaterialArea: 0,
+      totalElementsArea: 0,
+      totalWaste: 0,
+      layouts: [],
+    }
+  );
+  const [selectedSteelLengthElements, setSelectedSteelLengthElements] = useState<SteelLengthElement[]>(savedConfig?.selectedElements || []);
+  const [selectedSteelLengths, setSelectedSteelLengths] = useState<SteelLength[]>(savedConfig?.selectedParents || steelLengths);
+
+  useEffect(() => {
+    saveNestingConfigurationToLocalStorage(
+      {
+        selectedElements: selectedSteelLengthElements,
+        selectedParents: selectedSteelLengths,
+        selectedProfileId: "",
+        quantities,
+        endResults,
+      },
+      ComponentNames.calculateLengthNesting
+    );
+  }, [selectedSteelLengthElements, selectedSteelLengths, quantities, endResults]);
 
   const toggleSteelElementSelection = (steelLengthElement: SteelLengthElement) => {
     setSelectedSteelLengthElements((previous) =>
@@ -67,45 +84,57 @@ export default function CalculateLengthNesting() {
         }))
       );
 
-      const best = findBest(relevantElements, selectedSteelLengths, { border: 0, margin: 0, machineName: "Saw", id: "saw", default: false, straightCuts: false });
+      const best = findBest(relevantElements, selectedSteelLengths, { border: 0, margin: 1.6, machineName: "Saw", id: "saw", default: false, straightCuts: false });
 
       const results = selectedSteelLengths
         .map((steelLength) => ({
-          sheetName: steelLength.name,
-          sheetSize: `${steelLength.length}`,
+          name: steelLength.name,
+          size: `${steelLength.length}`,
           count: best.counts[steelLength.id] || 0,
-          sheetArea: steelLength.width * steelLength.length,
+          area: steelLength.width * steelLength.length,
         }))
 
         .filter((steelLength) => steelLength.count > 0)
         .sort((a, b) => b.count - a.count);
 
       setEndResults({
-        sheets: results,
+        nestingParent: results,
         totalMaterialArea: best.totalArea,
-        totalSheetElementsArea: relevantElements.reduce((sum, sheetElement) => sum + sheetElement.width * sheetElement.length, 0),
-        totalWaste: best.totalArea - relevantElements.reduce((sum, sheetElement) => sum + sheetElement.width * sheetElement.length, 0),
+        totalElementsArea: relevantElements.reduce((sum, element) => sum + element.width * element.length, 0),
+        totalWaste: best.totalArea - relevantElements.reduce((sum, element) => sum + element.width * element.length, 0),
         layouts: best.layouts,
       });
 
       setIsLoading(false);
     }, 0);
   };
-  console.log(endResults);
+
+  const clearSelections = () => {
+    setEndResults({
+      nestingParent: [],
+      totalMaterialArea: 0,
+      totalElementsArea: 0,
+      totalWaste: 0,
+      layouts: [],
+    });
+    setQuantities({});
+    setSelectedSteelLengthElements([]);
+    setSelectedSteelLengths(steelLengths);
+  };
 
   return (
     <div className="flex max-h-[calc(100vh-100px)]">
-      <div className="p-4 mb-2">
+      <div className="flex-grow p-4 mb-2 w-1/2" style={{ borderRight: "1px solid var(--border)" }}>
         <h1 className="text-2xl font-bold mb-4">{language === "da" ? "Udregn stål længde nesting" : "Calculate steel length nesting"}</h1>
-        <p className="mb-4 max-w-[calc(40vw)]">
+        <p className="mb-4 ">
           {language === "da"
             ? "På denne side kan du vælge hvilke stål længder og hvilke stål længde emner du ønsker at udregne nesting med"
             : "On this page you can select which steel lengths and which steel length elements you wish to use to calculate nesting"}
         </p>
 
-        <div className="flex flex-col gap-4 max-w-[calc(40vw)]">
+        <div className="flex flex-col gap-4 ">
           {(steelLengths.length === 0 || steelLengthElements.length === 0) && (
-            <div className="flex flex-col gap-4 max-w-[calc(40vw)] mt-8">
+            <div className="flex flex-col gap-4  mt-8">
               {steelLengthElements.length === 0 && (
                 <div className="flex">
                   <ShieldAlert className="h-6 w-6 mr-2" />
@@ -129,7 +158,7 @@ export default function CalculateLengthNesting() {
             </div>
           )}
           {steelLengths.length !== 0 && steelLengthElements.length !== 0 && (
-            <div className="flex flex-row gap-6 max-w-[calc(40vw)]">
+            <div className="flex flex-col gap-6 ">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline">{language === "da" ? "Vælg stål længde emmer" : "Select steel length elements"}</Button>
@@ -164,9 +193,12 @@ export default function CalculateLengthNesting() {
                 </DropdownMenuContent>
               </DropdownMenu>
               {steelLengths.length !== 0 && steelLengthElements.length !== 0 && (
-                <div className="ml-auto">
-                  <Button disabled={isLoading || selectedSteelLengths?.length === 0 || selectedSteelLengthElements?.length === 0} onClick={() => getResults()}>
+                <div className="w-full flex justify-between">
+                  <Button className="w-[48%]" disabled={isLoading || selectedSteelLengths?.length === 0 || selectedSteelLengthElements?.length === 0} onClick={() => getResults()}>
                     {isLoading ? <Loader2Icon className="animate-spin" /> : language === "da" ? "Udregn nesting" : "Calculate nesting"}
+                  </Button>
+                  <Button className="w-[48%]" disabled={isLoading || (selectedSteelLengths?.length === 0 && selectedSteelLengthElements?.length === 0)} variant="ghost" onClick={clearSelections}>
+                    {language === "da" ? "Ryd" : "Clear"}
                   </Button>
                 </div>
               )}
@@ -174,7 +206,7 @@ export default function CalculateLengthNesting() {
           )}
 
           {selectedSteelLengthElements.length !== 0 && (
-            <div style={{ borderRadius: "10px" }} className="flex-grow overflow-auto p-4 bg-muted max-h-[calc(70vh)]">
+            <div style={{ borderRadius: "10px" }} className="flex-grow overflow-auto p-4 bg-muted ">
               <Table>
                 <TableHeader className="top-0 bg-muted z-10">
                   <TableRow>
@@ -220,15 +252,13 @@ export default function CalculateLengthNesting() {
           )}
         </div>
       </div>
-      <div className="flex-grow pl-4 pr-4 max-w-[calc(47vw)]">
-        {endResults.sheets.length !== 0 && selectedSteelLengthElements.length !== 0 && selectedSteelLengths.length !== 0 && (
+      <div className="flex-grow pl-4 pr-4 w-1/2">
+        {endResults.nestingParent.length !== 0 && selectedSteelLengthElements.length !== 0 && selectedSteelLengths.length !== 0 && (
           <div className="p-4">
             <h2 className="text-xl font-semibold mb-4">{language === "da" ? "Resultat" : "Result"}</h2>
             <ul className="list-disc list-inside space-y-1">
-              {endResults.sheets.map((sheet, index) => (
-                <li key={index}>
-                  {language === "da" ? `Brug ${sheet.count} stk. ${sheet.sheetName} (${sheet.sheetSize} mm)` : `Use ${sheet.count} sheet(s) of ${sheet.sheetName} (${sheet.sheetSize} mm)`}
-                </li>
+              {endResults.nestingParent.map((sheet, index) => (
+                <li key={index}>{language === "da" ? `Brug ${sheet.count} stk. ${sheet.name} (${sheet.size} mm)` : `Use ${sheet.count} sheet(s) of ${sheet.name} (${sheet.size} mm)`}</li>
               ))}
             </ul>
           </div>

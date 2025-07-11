@@ -3,25 +3,26 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { loadLanguage } from "@/App";
-import { STORAGE_KEYS, type SheetElement } from "@/lib/types";
+import { ComponentNames, InputFieldValues, STORAGE_KEYS, type SheetElement } from "@/lib/types";
 import { useSort } from "@/hooks/useSort";
-import { loadFromLocalStorage, saveToLocalStorage } from "@/lib/utils-local-storage";
+import { clearInputsFromLocalStorage, loadItemsFromLocalStorage, loadInputFromLocalStorage, saveInputToLocalStorage, saveItemsToLocalStorage } from "@/lib/utils-local-storage";
 import { addSheetOrSheetElement, saveSheetOrSheetElement } from "@/lib/utils-sheets-and-sheet-elements";
 
 export default function MySheetElements() {
   const [language] = useState<string>(() => loadLanguage());
 
-  const [sheetElements, setSheetElements] = useState<SheetElement[]>(() => loadFromLocalStorage(STORAGE_KEYS.SHEETELEMENTS));
-  const [name, setName] = useState<string>("");
-  const [width, setWidth] = useState<string>("");
-  const [length, setLength] = useState<string>("");
+  const [sheetElements, setSheetElements] = useState<SheetElement[]>(() => loadItemsFromLocalStorage(STORAGE_KEYS.SHEETELEMENTS));
+  const [name, setName] = useState<string>(() => loadInputFromLocalStorage(InputFieldValues.name, ComponentNames.mySheetElements) || "");
+  const [width, setWidth] = useState<string>(() => loadInputFromLocalStorage(InputFieldValues.width, ComponentNames.mySheetElements) || "");
+  const [length, setLength] = useState<string>(() => loadInputFromLocalStorage(InputFieldValues.length, ComponentNames.mySheetElements) || "");
+
   const [editedName, setEditedName] = useState<string>("");
   const [editedWidth, setEditedWidth] = useState<string>("");
   const [editedLength, setEditedLength] = useState<string>("");
   const [beingEdited, setBeingEdited] = useState<string>("");
   const { sortedItems, handleSort } = useSort<SheetElement>(sheetElements, "length");
   useEffect(() => {
-    saveToLocalStorage(STORAGE_KEYS.SHEETELEMENTS, sheetElements);
+    saveItemsToLocalStorage(STORAGE_KEYS.SHEETELEMENTS, sheetElements);
   }, [sheetElements]);
 
   const addSheetElement = () => {
@@ -32,6 +33,13 @@ export default function MySheetElements() {
     setName("");
     setWidth("");
     setLength("");
+    clearInputsFromLocalStorage([InputFieldValues.name, InputFieldValues.width, InputFieldValues.length], ComponentNames.mySheetElements);
+  };
+  const clearInputs = () => {
+    setName("");
+    setWidth("");
+    setLength("");
+    clearInputsFromLocalStorage([InputFieldValues.name, InputFieldValues.width, InputFieldValues.length], ComponentNames.mySheetElements);
   };
 
   const SaveEditedSheetElement = () => {
@@ -55,9 +63,35 @@ export default function MySheetElements() {
             : "On this page you can add sheet elements that you can continuously reuse when calculating nestings. Take note that Length will always end up the bigger number"}
         </p>
         <div className="flex flex-col sm:flex-row gap-2">
-          <Input placeholder={language === "da" ? "Plade emne navn" : "Sheet element name"} value={name} onChange={(e) => setName(e.target.value)} />
-          <Input placeholder={language === "da" ? "Længde (mm)" : "Length (mm)"} type="number" value={length} onChange={(e) => setLength(e.target.value)} />
-          <Input placeholder={language === "da" ? "Bredde (mm)" : "Width (mm)"} type="number" value={width} onChange={(e) => setWidth(e.target.value)} />
+          <Input
+            placeholder={language === "da" ? "Plade emne navn" : "Sheet element name"}
+            value={name}
+            onChange={(e) => {
+              setName(e.target.value);
+              saveInputToLocalStorage(InputFieldValues.name, e.target.value, ComponentNames.mySheetElements);
+            }}
+          />
+          <Input
+            placeholder={language === "da" ? "Længde (mm)" : "Length (mm)"}
+            type="number"
+            value={length}
+            onChange={(e) => {
+              setLength(e.target.value);
+              saveInputToLocalStorage(InputFieldValues.length, e.target.value, ComponentNames.mySheetElements);
+            }}
+          />
+          <Input
+            placeholder={language === "da" ? "Bredde (mm)" : "Width (mm)"}
+            type="number"
+            value={width}
+            onChange={(e) => {
+              setWidth(e.target.value);
+              saveInputToLocalStorage(InputFieldValues.width, e.target.value, ComponentNames.mySheetElements);
+            }}
+          />
+          <Button disabled={(name === "" && length === "" && width === "") || (!name && !width && !length)} variant="ghost" onClick={clearInputs}>
+            {language === "da" ? "Ryd" : "Clear"}
+          </Button>
           <Button disabled={name === "" || length === "" || width === "" || !name || !width || !length} variant="secondary" onClick={addSheetElement}>
             {language === "da" ? "Tilføj" : "Add"}
           </Button>

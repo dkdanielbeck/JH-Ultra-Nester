@@ -3,24 +3,24 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { loadLanguage } from "@/App";
-import { STORAGE_KEYS, type SteelLength } from "@/lib/types";
+import { ComponentNames, InputFieldValues, STORAGE_KEYS, type SteelLength } from "@/lib/types";
 import { useSort } from "@/hooks/useSort";
-import { loadFromLocalStorage, saveToLocalStorage } from "@/lib/utils-local-storage";
+import { clearInputsFromLocalStorage, loadItemsFromLocalStorage, loadInputFromLocalStorage, saveInputToLocalStorage, saveItemsToLocalStorage } from "@/lib/utils-local-storage";
 import { addSteelLengthOrSteelLengthElement, saveSteelLengthOrSteelLengthElement } from "@/lib/utils-steel-lengths-and-length-elements";
 
 export default function MySteelLengths() {
   const [language] = useState<string>(() => loadLanguage());
 
-  const [steelLengths, setSteelLengths] = useState<SteelLength[]>(() => loadFromLocalStorage(STORAGE_KEYS.STEELLENGTHS));
-  const [name, setName] = useState<string>("");
-  const [length, setLength] = useState<string>("");
+  const [steelLengths, setSteelLengths] = useState<SteelLength[]>(() => loadItemsFromLocalStorage(STORAGE_KEYS.STEELLENGTHS));
+  const [name, setName] = useState<string>(() => loadInputFromLocalStorage(InputFieldValues.name, ComponentNames.mySteelLengths) || "");
+  const [length, setLength] = useState<string>(() => loadInputFromLocalStorage(InputFieldValues.length, ComponentNames.mySteelLengths) || "");
   const [editedName, setEditedName] = useState<string>("");
   const [editedLength, setEditedLength] = useState<string>("");
   const [beingEdited, setBeingEdited] = useState<string>("");
   const { sortedItems, handleSort } = useSort<SteelLength>(steelLengths, "length");
 
   useEffect(() => {
-    saveToLocalStorage(STORAGE_KEYS.STEELLENGTHS, steelLengths);
+    saveItemsToLocalStorage(STORAGE_KEYS.STEELLENGTHS, steelLengths);
   }, [steelLengths]);
 
   const addNewSteelLength = () => {
@@ -31,7 +31,11 @@ export default function MySteelLengths() {
     setName("");
     setLength("");
   };
-
+  const clearInputs = () => {
+    setName("");
+    setLength("");
+    clearInputsFromLocalStorage([InputFieldValues.name, InputFieldValues.length], ComponentNames.mySteelLengths);
+  };
   const SaveEditedSteelLength = () => {
     const updatedSteelLengths = saveSteelLengthOrSteelLengthElement(length, name, steelLengths, beingEdited);
 
@@ -52,8 +56,26 @@ export default function MySteelLengths() {
             : "On this page you can add steel lengths that you can continuously reuse when calculating nestings."}
         </p>
         <div className="flex flex-col sm:flex-row gap-2">
-          <Input placeholder={language === "da" ? "Stål længde navn" : "Steel length name"} value={name} onChange={(e) => setName(e.target.value)} />
-          <Input placeholder={language === "da" ? "Længde (mm)" : "Length (mm)"} type="number" value={length} onChange={(e) => setLength(e.target.value)} />
+          <Input
+            placeholder={language === "da" ? "Stål længde navn" : "Steel length name"}
+            value={name}
+            onChange={(e) => {
+              setName(e.target.value);
+              saveInputToLocalStorage(InputFieldValues.name, e.target.value, ComponentNames.mySteelLengths);
+            }}
+          />
+          <Input
+            placeholder={language === "da" ? "Længde (mm)" : "Length (mm)"}
+            type="number"
+            value={length}
+            onChange={(e) => {
+              setLength(e.target.value);
+              saveInputToLocalStorage(InputFieldValues.length, e.target.value, ComponentNames.mySteelLengths);
+            }}
+          />
+          <Button disabled={(name === "" && length === "") || (!name && !length)} variant="ghost" onClick={clearInputs}>
+            {language === "da" ? "Ryd" : "Clear"}
+          </Button>
           <Button disabled={name === "" || length === "" || !name || !length} variant="secondary" onClick={addNewSteelLength}>
             {language === "da" ? "Tilføj" : "Add"}
           </Button>
