@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { loadLanguage } from "@/App";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ComponentNames, InputFieldValues, STORAGE_KEYS, type MachineProfile } from "@/lib/types";
+import { ComponentNames, InputFieldValues, STORAGE_KEYS, type Machine } from "@/lib/types";
 import { useSort } from "@/hooks/useSort";
 import { clearInputsFromLocalStorage, loadItemsFromLocalStorage, loadInputFromLocalStorage, saveInputToLocalStorage, saveItemsToLocalStorage } from "@/lib/utils-local-storage";
 import { addMachine, saveMachine } from "@/lib/utils-machines";
@@ -12,7 +12,7 @@ import { addMachine, saveMachine } from "@/lib/utils-machines";
 export default function MySheetMachines() {
   const [language] = useState<string>(() => loadLanguage());
 
-  const [machines, setMachines] = useState<MachineProfile[]>(() => loadItemsFromLocalStorage(STORAGE_KEYS.MACHINES));
+  const [machines, setMachines] = useState<Machine[]>(() => loadItemsFromLocalStorage(STORAGE_KEYS.MACHINES));
   const [name, setName] = useState(loadInputFromLocalStorage(InputFieldValues.name, ComponentNames.myMachines) || "");
   const [border, setBorder] = useState(loadInputFromLocalStorage(InputFieldValues.border, ComponentNames.myMachines) || "");
   const [margin, setMargin] = useState(loadInputFromLocalStorage(InputFieldValues.margin, ComponentNames.myMachines) || "");
@@ -20,7 +20,7 @@ export default function MySheetMachines() {
   const [editedBorder, setEditedBorder] = useState<string>("");
   const [editedMargin, setEditedMargin] = useState<string>("");
   const [beingEdited, setBeingEdited] = useState<string>("");
-  const { sortedItems, handleSort } = useSort<MachineProfile>(machines, "machineName");
+  const { sortedItems, handleSort } = useSort<Machine>(machines, "name");
 
   useEffect(() => {
     saveItemsToLocalStorage(STORAGE_KEYS.MACHINES, machines);
@@ -131,7 +131,7 @@ export default function MySheetMachines() {
           <Table>
             <TableHeader className="top-0 bg-muted z-10">
               <TableRow>
-                <TableHead onClick={() => handleSort("machineName")} className="cursor-pointer">
+                <TableHead onClick={() => handleSort("name")} className="cursor-pointer">
                   {language === "da" ? "Navn" : "Name"}
                 </TableHead>
                 <TableHead onClick={() => handleSort("margin")} className="cursor-pointer">
@@ -155,7 +155,7 @@ export default function MySheetMachines() {
                       {shouldEdit ? (
                         <Input className="max-w-40" placeholder={language === "da" ? "Maskine navn" : "Machine name"} value={editedName} onChange={(e) => setEditedName(e.target.value)} />
                       ) : (
-                        machine.machineName
+                        machine.name
                       )}
                     </TableCell>
                     <TableCell>
@@ -204,7 +204,7 @@ export default function MySheetMachines() {
                           size="sm"
                           onClick={() => {
                             setBeingEdited(machine.id);
-                            setEditedName(machine.machineName);
+                            setEditedName(machine.name);
                             setEditedBorder(machine.border.toString());
                             setEditedMargin(machine.margin.toString());
                           }}

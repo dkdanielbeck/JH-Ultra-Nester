@@ -1,38 +1,62 @@
+export type Sheet = {
+  id: string;
+  name: string;
+  width: number;
+  length: number;
+  weight?: number;
+  price?: number;
+  type: typeof ITEMTYPES.Sheet;
+};
+
 export type SheetElement = {
   id: string;
   name: string;
   width: number;
   length: number;
   instanceId?: string;
+  weight?: number;
+  price?: number;
+  type: typeof ITEMTYPES.SheetElement;
 };
 export type SteelLength = {
   id: string;
   name: string;
   length: number;
   width: number;
+  weight?: number;
+  price?: number;
+  type: typeof ITEMTYPES.SteelLength;
 };
 export type SteelLengthElement = {
   id: string;
   name: string;
   length: number;
   width: number;
+  instanceId?: string;
+  weight?: number;
+  price?: number;
+  type: typeof ITEMTYPES.SteelLengthElement;
 };
 
-export type MachineProfile = {
-  machineName: string;
+export type Machine = {
+  name: string;
   margin: number;
   border: number;
   id: string;
   default: boolean;
   straightCuts: boolean;
+  type: typeof ITEMTYPES.Machine;
 };
 
-export type Sheet = {
-  id: string;
-  name: string;
-  width: number;
-  length: number;
-};
+export const ITEMTYPES = {
+  Sheet: "sheet",
+  SheetElement: "sheet-element",
+  SteelLength: "steel-length",
+  SteelLengthElement: "steel-length-element",
+  Machine: "machine",
+} as const;
+
+export type ItemTypeEnum = (typeof ITEMTYPES)[keyof typeof ITEMTYPES];
 
 export const STORAGE_KEYS = {
   SHEETELEMENTS: "my-sheet-elements",
@@ -49,11 +73,11 @@ export type StorageKeyMap = {
   [STORAGE_KEYS.SHEETS]: Sheet[];
   [STORAGE_KEYS.STEELLENGTHS]: SteelLength[];
   [STORAGE_KEYS.STEELLENGTHELEMENTS]: SteelLengthElement[];
-  [STORAGE_KEYS.MACHINES]: MachineProfile[];
+  [STORAGE_KEYS.MACHINES]: Machine[];
 };
 
 export interface PlacedRect {
-  sheetElement: SheetElement;
+  element: SheetElement | SteelLengthElement;
   x: number;
   y: number;
   width: number;
@@ -61,11 +85,11 @@ export interface PlacedRect {
 
   rotated: boolean;
 }
-export interface SheetLayout {
-  sheetId: string;
-  sheetName: string;
-  sheetSize: string;
-  sheetArea: number;
+export interface ParentLayout {
+  parentId: string;
+  parentName: string;
+  parentSize: string;
+  parentArea: number;
   width: number;
   length: number;
   rectangles: PlacedRect[];
@@ -75,18 +99,27 @@ export type SheetCount = Record<string, number>;
 export type DPResult = {
   totalArea: number;
   counts: SheetCount;
-  layouts: SheetLayout[];
+  layouts: ParentLayout[];
 };
 
 export interface NestingResults {
-  nestingParent: { name: string; size: string; count: number; area: number }[];
-  layouts: SheetLayout[];
+  nestingParent: NestingParent[];
+  layouts: ParentLayout[];
   totalMaterialArea: number;
   totalElementsArea: number;
   totalWaste: number;
 }
 
-export type InputField = "name" | "width" | "length" | "margin" | "border";
+export interface NestingParent {
+  name: string;
+  size: string;
+  count: number;
+  area: number;
+  weight: number;
+  price: number;
+}
+
+export type InputField = "name" | "width" | "length" | "margin" | "border" | "weight" | "price";
 
 export const InputFieldValues: Record<InputField, InputField> = {
   name: "name",
@@ -94,6 +127,8 @@ export const InputFieldValues: Record<InputField, InputField> = {
   length: "length",
   margin: "margin",
   border: "border",
+  weight: "border",
+  price: "border",
 };
 
 export type ComponentName = "mySheetElements" | "mySheets" | "mySteelLengths" | "mySteelLengthElements" | "myMachines" | "calculateSheetNesting" | "calculateLengthNesting";
@@ -115,3 +150,5 @@ export interface SavedNestingConfiguration {
   quantities: Record<string, number>;
   endResults: NestingResults;
 }
+
+export type ItemType = Sheet | SheetElement | SteelLength | SteelLengthElement | Machine;

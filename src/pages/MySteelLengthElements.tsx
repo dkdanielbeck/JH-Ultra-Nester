@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { loadLanguage } from "@/App";
-import { ComponentNames, InputFieldValues, STORAGE_KEYS, type SteelLengthElement } from "@/lib/types";
+import { ComponentNames, InputFieldValues, ITEMTYPES, STORAGE_KEYS, type SteelLengthElement } from "@/lib/types";
 import { useSort } from "@/hooks/useSort";
 import { clearInputsFromLocalStorage, loadItemsFromLocalStorage, loadInputFromLocalStorage, saveInputToLocalStorage, saveItemsToLocalStorage } from "@/lib/utils-local-storage";
 import { addSteelLengthOrSteelLengthElement, saveSteelLengthOrSteelLengthElement } from "@/lib/utils-steel-lengths-and-length-elements";
@@ -24,9 +24,9 @@ export default function MySteelLengthElements() {
   }, [steelLengthElements]);
 
   const addNewSteelLengthElement = () => {
-    const updatedSteelLengthElements = addSteelLengthOrSteelLengthElement(length, name, steelLengthElements);
+    const updatedSteelLengthElements = addSteelLengthOrSteelLengthElement(length, name, undefined, undefined, steelLengthElements, ITEMTYPES.SteelLengthElement);
 
-    setSteelLengthElements(updatedSteelLengthElements);
+    setSteelLengthElements(updatedSteelLengthElements as SteelLengthElement[]);
 
     setName("");
     setLength("");
@@ -38,9 +38,9 @@ export default function MySteelLengthElements() {
   };
 
   const SaveEditedSteelLengthElement = () => {
-    const updatedSteelLengthElements = saveSteelLengthOrSteelLengthElement(length, name, steelLengthElements, beingEdited);
+    const updatedSteelLengthElements = saveSteelLengthOrSteelLengthElement(editedLength, editedName, undefined, undefined, steelLengthElements, beingEdited, ITEMTYPES.SteelLengthElement);
 
-    setSteelLengthElements(updatedSteelLengthElements);
+    setSteelLengthElements(updatedSteelLengthElements as SteelLengthElement[]);
 
     setEditedName("");
     setEditedLength("");

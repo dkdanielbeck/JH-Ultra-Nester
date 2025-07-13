@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { loadLanguage } from "@/App";
-import { ComponentNames, InputFieldValues, STORAGE_KEYS, type SheetElement } from "@/lib/types";
+import { ComponentNames, InputFieldValues, ITEMTYPES, STORAGE_KEYS, type SheetElement } from "@/lib/types";
 import { useSort } from "@/hooks/useSort";
 import { clearInputsFromLocalStorage, loadItemsFromLocalStorage, loadInputFromLocalStorage, saveInputToLocalStorage, saveItemsToLocalStorage } from "@/lib/utils-local-storage";
 import { addSheetOrSheetElement, saveSheetOrSheetElement } from "@/lib/utils-sheets-and-sheet-elements";
@@ -26,9 +26,9 @@ export default function MySheetElements() {
   }, [sheetElements]);
 
   const addSheetElement = () => {
-    const updatedSheetElements = addSheetOrSheetElement(width, length, name, sheetElements);
+    const updatedSheetElements = addSheetOrSheetElement(width, length, name, undefined, undefined, sheetElements, ITEMTYPES.SheetElement);
 
-    setSheetElements(updatedSheetElements);
+    setSheetElements(updatedSheetElements as SheetElement[]);
 
     setName("");
     setWidth("");
@@ -43,9 +43,9 @@ export default function MySheetElements() {
   };
 
   const SaveEditedSheetElement = () => {
-    const updatedSheetElements = saveSheetOrSheetElement(width, length, name, sheetElements, beingEdited);
+    const updatedSheetElements = saveSheetOrSheetElement(editedWidth, editedLength, editedName, undefined, undefined, sheetElements, beingEdited, ITEMTYPES.SheetElement);
 
-    setSheetElements(updatedSheetElements);
+    setSheetElements(updatedSheetElements as SheetElement[]);
 
     setEditedName("");
     setEditedWidth("");

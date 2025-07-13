@@ -1,14 +1,15 @@
 import { loadLanguage } from "@/App";
 import { useEffect, useState } from "react";
-import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
-import { Loader2Icon, ShieldAlert } from "lucide-react";
-import { Link } from "react-router-dom";
-import { type Sheet, type MachineProfile, type SheetElement, STORAGE_KEYS, type NestingResults, ComponentNames } from "@/lib/types";
+import { Loader2Icon } from "lucide-react";
+import { type Sheet, type Machine, type SheetElement, STORAGE_KEYS, type NestingResults, ComponentNames, ITEMTYPES } from "@/lib/types";
 import { loadItemsFromLocalStorage, loadNestingConfigurationFromLocalStorage, saveNestingConfigurationToLocalStorage } from "@/lib/utils-local-storage";
 import { findBest } from "@/lib/utils-nesting";
+import { formatResultsLine } from "@/lib/utils";
+import EmptyStateLine from "@/components/my-components/EmptyStateLine";
+import DropdownMenuConsolidated from "@/components/my-components/DropdownMenuConsolidated";
 
 export default function CalculateSheetNesting() {
   const savedConfig = loadNestingConfigurationFromLocalStorage(ComponentNames.calculateSheetNesting);
@@ -16,7 +17,7 @@ export default function CalculateSheetNesting() {
   const [language] = useState<string>(() => loadLanguage());
   const [sheetElements] = useState<SheetElement[]>(() => loadItemsFromLocalStorage(STORAGE_KEYS.SHEETELEMENTS));
   const [sheets] = useState<Sheet[]>(() => loadItemsFromLocalStorage(STORAGE_KEYS.SHEETS));
-  const [machines] = useState<MachineProfile[]>(() => loadItemsFromLocalStorage(STORAGE_KEYS.MACHINES));
+  const [machines] = useState<Machine[]>(() => loadItemsFromLocalStorage(STORAGE_KEYS.MACHINES));
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [quantities, setQuantities] = useState<Record<string, number>>(savedConfig?.quantities || {});
   const [endResults, setEndResults] = useState<NestingResults>(
@@ -28,9 +29,9 @@ export default function CalculateSheetNesting() {
       layouts: [],
     }
   );
-  const [selectedSheetElements, setSelectedElements] = useState<SheetElement[]>(savedConfig?.selectedElements || []);
-  const [selectedSheets, setSelectedSheets] = useState<Sheet[]>(savedConfig?.selectedParents || sheets);
-  const [selectedProfile, setSelectedProfile] = useState<MachineProfile | undefined>(() => {
+  const [selectedSheetElements, setSelectedElements] = useState<SheetElement[]>((savedConfig?.selectedElements as SheetElement[]) || []);
+  const [selectedSheets, setSelectedSheets] = useState<Sheet[]>((savedConfig?.selectedParents as Sheet[]) || sheets);
+  const [selectedProfile, setSelectedProfile] = useState<Machine | undefined>(() => {
     if (savedConfig?.selectedProfileId) {
       return machines.find((m) => m.id === savedConfig.selectedProfileId);
     }
@@ -62,7 +63,7 @@ export default function CalculateSheetNesting() {
     setSelectedSheets((previous) => (previous.some((selectedSheet) => sheet.id === selectedSheet.id) ? previous.filter((previousSheet) => previousSheet.id !== sheet.id) : [...previous, sheet]));
   };
 
-  const toggleProfileSelection = (profile: MachineProfile) => {
+  const toggleProfileSelection = (profile: Machine) => {
     setSelectedProfile(profile);
   };
 
@@ -85,6 +86,7 @@ export default function CalculateSheetNesting() {
           width: sheetElement.width,
           length: sheetElement.length,
           name: sheetElement.name,
+          type: sheetElement.type,
           instanceId: crypto.randomUUID(),
         }))
       );
@@ -93,6 +95,8 @@ export default function CalculateSheetNesting() {
 
       const results = selectedSheets
         .map((sheet) => ({
+          price: sheet?.price ?? 0,
+          weight: sheet?.weight ?? 0,
           name: sheet.name,
           size: `${sheet.width}×${sheet.length}`,
           count: best.counts[sheet.id] || 0,
@@ -140,83 +144,30 @@ export default function CalculateSheetNesting() {
 
         <div className="flex flex-col gap-4 ">
           {(sheets.length === 0 || machines.length === 0 || sheetElements.length === 0) && (
-            <div className="flex flex-col gap-4  mt-8">
-              {sheetElements.length === 0 && (
-                <div className="flex">
-                  <ShieldAlert className="h-6 w-6 mr-2" />
-                  <p className="mr-2">{language === "da" ? "Du har ikke oprettet nogen plade emner endnu." : "You have not yet created any sheet elements."}</p>
+            <div className="flex flex-col gap-4 mt-8">
+              {sheetElements.length === 0 && <EmptyStateLine language={language} type={ITEMTYPES.SheetElement} href="/sheet-elements" />}
 
-                  <Link to={"/sheet-elements"} className="flex items-center gap-2 link">
-                    <span>{language === "da" ? "Opret plade emner her" : "Create sheet elements here"}</span>
-                  </Link>
-                </div>
-              )}
+              {sheets.length === 0 && <EmptyStateLine language={language} type={ITEMTYPES.Sheet} href="/sheets" />}
 
-              {sheets.length === 0 && (
-                <div className="flex ">
-                  <ShieldAlert className="h-6 w-6 mr-2" />
-                  <p className="mr-2">{language === "da" ? "Du har ikke oprettet nogen plader endnu." : "You have not yet created any sheets."}</p>
-                  <Link to={"/sheets"} className="link">
-                    <span>{language === "da" ? "Opret plader her" : "Create sheets here"}</span>
-                  </Link>
-                </div>
-              )}
-
-              {machines.length === 0 && (
-                <div className="flex">
-                  <ShieldAlert className="h-6 w-6 mr-2" />
-                  <p className="mr-2">{language === "da" ? "Du har ikke oprettet nogen maskiner endnu." : "You have not yet created any machines."}</p>
-                  <Link to={"/sheet-machines"} className="link">
-                    <span>{language === "da" ? "Opret maskiner her" : "Create machines here"}</span>
-                  </Link>
-                </div>
-              )}
+              {machines.length === 0 && <EmptyStateLine language={language} type={ITEMTYPES.Machine} href="/sheet-machines" />}
             </div>
           )}
           {sheets.length !== 0 && machines.length !== 0 && sheetElements.length !== 0 && (
             <div className="flex flex-col gap-6 ">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline">{language === "da" ? "Vælg plade emner" : "Select sheet elements"}</Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  {sheetElements.map((sheetElement) => (
-                    <DropdownMenuCheckboxItem
-                      key={sheetElement.id}
-                      checked={selectedSheetElements.some((selectedElement) => sheetElement.id === selectedElement.id)}
-                      onCheckedChange={() => toggleElementSelection(sheetElement)}
-                    >
-                      {sheetElement.name} ({sheetElement.length}×{sheetElement.width} mm)
-                    </DropdownMenuCheckboxItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <DropdownMenuConsolidated<SheetElement>
+                language={language}
+                items={sheetElements}
+                selectedItems={selectedSheetElements}
+                onSelect={(sheetElement) => toggleElementSelection(sheetElement)}
+              />
 
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline">{language === "da" ? "Vælg plader" : "Select sheets"}</Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  {sheets.map((sheet) => (
-                    <DropdownMenuCheckboxItem key={sheet.id} checked={selectedSheets.some((selectedSheet) => sheet.id === selectedSheet.id)} onCheckedChange={() => toggleSheetSelection(sheet)}>
-                      {sheet.name} ({sheet.length}×{sheet.width} mm)
-                    </DropdownMenuCheckboxItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline">{language === "da" ? "Vælg maskine profil" : "Select machine profile"}</Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  {machines.map((machine) => (
-                    <DropdownMenuCheckboxItem key={machine.id} checked={selectedProfile ? selectedProfile.id === machine.id : false} onCheckedChange={() => toggleProfileSelection(machine)}>
-                      {machine.machineName}
-                    </DropdownMenuCheckboxItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <DropdownMenuConsolidated<Sheet> language={language} items={sheets} selectedItems={selectedSheets} onSelect={(sheet) => toggleSheetSelection(sheet)} />
+              <DropdownMenuConsolidated<Machine>
+                language={language}
+                items={machines}
+                selectedItems={selectedProfile ? [selectedProfile] : []}
+                onSelect={(machine) => toggleProfileSelection(machine)}
+              />
 
               {machines.length !== 0 && sheets.length !== 0 && sheetElements.length !== 0 && (
                 <div className="w-full flex justify-between">
@@ -288,11 +239,16 @@ export default function CalculateSheetNesting() {
         {endResults.nestingParent.length !== 0 && selectedSheetElements.length !== 0 && selectedSheets.length !== 0 && (
           <div className="p-4">
             <h2 className="text-xl font-semibold mb-4">{language === "da" ? "Resultat" : "Result"}</h2>
-            <ul className="list-disc list-inside space-y-1">
-              {endResults.nestingParent.map((sheet, index) => (
-                <li key={index}>{language === "da" ? `Brug ${sheet.count} stk. ${sheet.name} (${sheet.size} mm)` : `Use ${sheet.count} sheet(s) of ${sheet.name} (${sheet.size} mm)`}</li>
-              ))}
-            </ul>
+            <ul className="list-disc list-inside space-y-1">{endResults.nestingParent.map((parent, index) => formatResultsLine(parent, index, language))}</ul>
+            <p className="mt-2 pt-2" style={{ borderTop: "1px solid var(--border)" }}>
+              Total:{" "}
+              <strong>
+                {endResults.nestingParent.reduce((sum, item) => {
+                  return sum + (item.price ?? 0) * (item.weight ?? 0);
+                }, 0)}{" "}
+                kr.
+              </strong>
+            </p>
           </div>
         )}
         <>
@@ -310,7 +266,7 @@ export default function CalculateSheetNesting() {
               const globalScale = Math.min(MAX_DIM / maxW, MAX_DIM / maxH);
 
               return (
-                <div style={{ borderRadius: "10px" }} className="flex flex-wrap gap-4 overflow-auto p-4 bg-muted max-h-[calc(70vh)]">
+                <div style={{ borderRadius: "10px" }} className="flex flex-wrap gap-4 overflow-auto p-4 bg-muted max-h-[calc(75vh)]">
                   {endResults.layouts.map((layout, i) => {
                     const width = layout.width * globalScale;
                     const height = layout.length * globalScale;
@@ -320,7 +276,7 @@ export default function CalculateSheetNesting() {
                     return (
                       <div key={i} className="mb-4">
                         <h3 className="text-lg font-semibold mb-2">
-                          {layout.sheetName} ({layout.sheetSize + " mm"})
+                          {layout.parentName} ({layout.parentSize + " mm"})
                         </h3>
                         <svg className="sheet" width={width} height={height} viewBox={`0 0 ${layout.width} ${layout.length}`}>
                           {layout.rectangles.map((rectangle, idx) => (

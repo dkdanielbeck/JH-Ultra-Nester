@@ -1,6 +1,14 @@
-import type { Sheet, SheetElement } from "./types";
+import { ITEMTYPES, type ItemTypeEnum, type Sheet, type SheetElement } from "./types";
 
-export function addSheetOrSheetElement(width: string, length: string, name: string, list: Sheet[] | SheetElement[]): Sheet[] | SheetElement[] {
+export function addSheetOrSheetElement(
+  width: string,
+  length: string,
+  name: string,
+  price: string | undefined,
+  weight: string | undefined,
+  list: Sheet[] | SheetElement[],
+  type: ItemTypeEnum
+): Sheet[] | SheetElement[] {
   const largestNumberIsLength = parseInt(width) < parseInt(length) ? true : false;
 
   const parsedWidth = parseInt(largestNumberIsLength ? width : length);
@@ -16,18 +24,31 @@ export function addSheetOrSheetElement(width: string, length: string, name: stri
     return list;
   }
 
-  const newItem: Sheet | SheetElement = {
+  const baseItem = {
     id: crypto.randomUUID(),
     name: name.trim(),
     width: parsedWidth,
     length: parsedLength,
+    weight: weight ? parseInt(weight) : undefined,
+    price: price ? parseInt(price) : undefined,
+    type,
   };
 
-  const updatedList = [...list, newItem];
+  const updatedList = type === ITEMTYPES.Sheet ? [...(list as Sheet[]), baseItem as Sheet] : [...(list as SheetElement[]), baseItem as SheetElement];
+
   return updatedList;
 }
 
-export function saveSheetOrSheetElement(width: string, length: string, name: string, list: Sheet[] | SheetElement[], itemId: string): Sheet[] | SheetElement[] {
+export function saveSheetOrSheetElement(
+  width: string,
+  length: string,
+  name: string,
+  price: string | undefined,
+  weight: string | undefined,
+  list: Sheet[] | SheetElement[],
+  itemId: string,
+  type: ItemTypeEnum
+): Sheet[] | SheetElement[] {
   const largestNumberIsLength = parseInt(width) < parseInt(length) ? true : false;
 
   const parsedWidth = parseInt(largestNumberIsLength ? width : length);
@@ -42,15 +63,20 @@ export function saveSheetOrSheetElement(width: string, length: string, name: str
     return list;
   }
 
-  const newItem: Sheet | SheetElement = {
+  const baseItem = {
     id: itemId,
     name: name.trim(),
     width: parsedWidth,
     length: parsedLength,
+    weight: weight ? parseInt(weight) : undefined,
+    price: price ? parseInt(price) : undefined,
+    type,
   };
 
-  const updatedItems = list.map((listItem) => {
-    return listItem.id === itemId ? newItem : listItem;
-  });
-  return updatedItems;
+  const updatedList =
+    type === ITEMTYPES.Sheet
+      ? (list as Sheet[]).map((item) => (item.id === itemId ? (baseItem as Sheet) : item))
+      : (list as SheetElement[]).map((item) => (item.id === itemId ? (baseItem as SheetElement) : item));
+
+  return updatedList;
 }

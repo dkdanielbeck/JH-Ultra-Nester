@@ -1,6 +1,13 @@
-import type { SteelLength, SteelLengthElement } from "./types";
+import { ITEMTYPES, type ItemTypeEnum, type SteelLength, type SteelLengthElement } from "./types";
 
-export function addSteelLengthOrSteelLengthElement(length: string, name: string, list: SteelLength[] | SteelLengthElement[]): SteelLength[] | SteelLengthElement[] {
+export function addSteelLengthOrSteelLengthElement(
+  length: string,
+  name: string,
+  price: string | undefined,
+  weight: string | undefined,
+  list: SteelLength[] | SteelLengthElement[],
+  type: ItemTypeEnum
+): SteelLength[] | SteelLengthElement[] {
   const parsedLength = parseInt(length);
 
   if (!name.trim() || isNaN(parsedLength)) return list;
@@ -13,18 +20,29 @@ export function addSteelLengthOrSteelLengthElement(length: string, name: string,
     return list;
   }
 
-  const newItem: SteelLength | SteelLengthElement = {
+  const baseItem = {
     id: crypto.randomUUID(),
     name: name.trim(),
     width: 200,
     length: parsedLength,
+    weight: weight ? parseInt(weight) : undefined,
+    price: price ? parseInt(price) : undefined,
+    type,
   };
 
-  const updatedList = [...list, newItem];
+  const updatedList = type === ITEMTYPES.SteelLength ? [...(list as SteelLength[]), baseItem as SteelLength] : [...(list as SteelLengthElement[]), baseItem as SteelLengthElement];
   return updatedList;
 }
 
-export function saveSteelLengthOrSteelLengthElement(length: string, name: string, list: SteelLength[] | SteelLengthElement[], itemId: string): SteelLength[] | SteelLengthElement[] {
+export function saveSteelLengthOrSteelLengthElement(
+  length: string,
+  name: string,
+  price: string | undefined,
+  weight: string | undefined,
+  list: SteelLength[] | SteelLengthElement[],
+  itemId: string,
+  type: ItemTypeEnum
+): SteelLength[] | SteelLengthElement[] {
   const parsedLength = parseInt(length);
 
   if (!name.trim() || isNaN(parsedLength)) return list;
@@ -36,15 +54,20 @@ export function saveSteelLengthOrSteelLengthElement(length: string, name: string
     return list;
   }
 
-  const newItem: SteelLength | SteelLengthElement = {
+  const baseItem = {
     id: itemId,
     name: name.trim(),
     width: 200,
     length: parsedLength,
+    weight: weight ? parseInt(weight) : undefined,
+    price: price ? parseInt(price) : undefined,
+    type,
   };
 
-  const updatedItems = list.map((listItem) => {
-    return listItem.id === itemId ? newItem : listItem;
-  });
-  return updatedItems;
+  const updatedList =
+    type === ITEMTYPES.SteelLength
+      ? (list as SteelLength[]).map((item) => (item.id === itemId ? (baseItem as SteelLength) : item))
+      : (list as SteelLengthElement[]).map((item) => (item.id === itemId ? (baseItem as SteelLengthElement) : item));
+
+  return updatedList;
 }

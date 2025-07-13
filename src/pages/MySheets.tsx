@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { loadLanguage } from "@/App";
-import { ComponentNames, InputFieldValues, STORAGE_KEYS, type Sheet } from "@/lib/types";
+import { ComponentNames, InputFieldValues, ITEMTYPES, STORAGE_KEYS, type Sheet } from "@/lib/types";
 import { useSort } from "@/hooks/useSort";
 import { clearInputsFromLocalStorage, loadItemsFromLocalStorage, loadInputFromLocalStorage, saveInputToLocalStorage, saveItemsToLocalStorage } from "@/lib/utils-local-storage";
 import { addSheetOrSheetElement, saveSheetOrSheetElement } from "@/lib/utils-sheets-and-sheet-elements";
@@ -15,9 +15,13 @@ export default function MySheets() {
 
   const [name, setName] = useState<string>(() => loadInputFromLocalStorage(InputFieldValues.name, ComponentNames.mySheets) || "");
   const [width, setWidth] = useState<string>(() => loadInputFromLocalStorage(InputFieldValues.width, ComponentNames.mySheets) || "");
+  const [price, setPrice] = useState<string>(() => loadInputFromLocalStorage(InputFieldValues.price, ComponentNames.mySheets) || "");
+  const [weight, setWeight] = useState<string>(() => loadInputFromLocalStorage(InputFieldValues.weight, ComponentNames.mySheets) || "");
   const [length, setLength] = useState<string>(() => loadInputFromLocalStorage(InputFieldValues.length, ComponentNames.mySheets) || "");
   const [editedName, setEditedName] = useState<string>("");
   const [editedWidth, setEditedWidth] = useState<string>("");
+  const [editedPrice, setEditedPrice] = useState<string>("");
+  const [editedWeight, setEditedWeight] = useState<string>("");
   const [editedLength, setEditedLength] = useState<string>("");
   const [beingEdited, setBeingEdited] = useState<string>("");
 
@@ -28,27 +32,33 @@ export default function MySheets() {
   }, [sheets]);
 
   const addSheet = () => {
-    const updatedSheets = addSheetOrSheetElement(width, length, name, sheets);
-    setSheets(updatedSheets);
+    const updatedSheets = addSheetOrSheetElement(width, length, name, price, weight, sheets, ITEMTYPES.Sheet);
+    setSheets(updatedSheets as Sheet[]);
 
     setName("");
     setWidth("");
+    setPrice("");
+    setWeight("");
     setLength("");
-    clearInputsFromLocalStorage([InputFieldValues.name, InputFieldValues.width, InputFieldValues.length], ComponentNames.mySheets);
+    clearInputsFromLocalStorage([InputFieldValues.name, InputFieldValues.width, InputFieldValues.length, InputFieldValues.weight, InputFieldValues.price], ComponentNames.mySheets);
   };
   const clearInputs = () => {
     setName("");
     setWidth("");
+    setPrice("");
+    setWeight("");
     setLength("");
-    clearInputsFromLocalStorage([InputFieldValues.name, InputFieldValues.width, InputFieldValues.length], ComponentNames.mySheets);
+    clearInputsFromLocalStorage([InputFieldValues.name, InputFieldValues.width, InputFieldValues.length, InputFieldValues.weight, InputFieldValues.price], ComponentNames.mySheets);
   };
   const SaveEditedSheet = () => {
-    const updatedSheets = saveSheetOrSheetElement(width, length, name, sheets, beingEdited);
+    const updatedSheets = saveSheetOrSheetElement(editedWidth, editedLength, editedName, editedPrice, editedWeight, sheets, beingEdited, ITEMTYPES.Sheet);
 
-    setSheets(updatedSheets);
+    setSheets(updatedSheets as Sheet[]);
 
     setEditedName("");
     setEditedWidth("");
+    setEditedPrice("");
+    setEditedWeight("");
     setEditedLength("");
     setBeingEdited("");
   };
@@ -89,6 +99,24 @@ export default function MySheets() {
               saveInputToLocalStorage(InputFieldValues.width, e.target.value, ComponentNames.mySheets);
             }}
           />
+          <Input
+            placeholder={language === "da" ? "Kilopris" : "Price per kilo"}
+            type="number"
+            value={price}
+            onChange={(e) => {
+              setPrice(e.target.value);
+              saveInputToLocalStorage(InputFieldValues.price, e.target.value, ComponentNames.mySheets);
+            }}
+          />
+          <Input
+            placeholder={language === "da" ? "Vægt (kg)" : "Weight (kg)"}
+            type="number"
+            value={weight}
+            onChange={(e) => {
+              setWeight(e.target.value);
+              saveInputToLocalStorage(InputFieldValues.weight, e.target.value, ComponentNames.mySheets);
+            }}
+          />
           <Button disabled={(name === "" && length === "" && width === "") || (!name && !width && !length)} variant="ghost" onClick={clearInputs}>
             {language === "da" ? "Ryd" : "Clear"}
           </Button>
@@ -111,6 +139,12 @@ export default function MySheets() {
                 </TableHead>
                 <TableHead onClick={() => handleSort("width")} className="cursor-pointer">
                   {language === "da" ? "Bredde (mm)" : "Width (mm)"}
+                </TableHead>
+                <TableHead onClick={() => handleSort("width")} className="cursor-pointer">
+                  {language === "da" ? "Kilopris (kr.)" : "Price per kilo"}
+                </TableHead>
+                <TableHead onClick={() => handleSort("width")} className="cursor-pointer">
+                  {language === "da" ? "Vægt (kg)" : "Weight (kg)"}
                 </TableHead>
                 <TableHead></TableHead>
               </TableRow>
@@ -147,6 +181,32 @@ export default function MySheets() {
                         sheet.width
                       )}
                     </TableCell>
+                    <TableCell>
+                      {shouldEdit ? (
+                        <Input
+                          className="max-w-40"
+                          placeholder={language === "da" ? "Kilopris" : "Price per kilo"}
+                          type="number"
+                          value={editedPrice}
+                          onChange={(e) => setEditedPrice(e.target.value)}
+                        />
+                      ) : (
+                        sheet?.price ?? "-"
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {shouldEdit ? (
+                        <Input
+                          className="max-w-40"
+                          placeholder={language === "da" ? "Vægt (kg)" : "Weight (kg)"}
+                          type="number"
+                          value={editedWeight}
+                          onChange={(e) => setEditedWeight(e.target.value)}
+                        />
+                      ) : (
+                        sheet?.weight ?? "-"
+                      )}
+                    </TableCell>
                     <TableCell className="flex justify-end space-x-2">
                       <Button className="mr-2" variant="destructive" size="sm" onClick={() => setSheets(sheets.filter((el) => el.id !== sheet.id))}>
                         {language === "da" ? "Slet" : "Remove"}
@@ -162,6 +222,8 @@ export default function MySheets() {
                           onClick={() => {
                             setBeingEdited(sheet.id);
                             setEditedName(sheet.name);
+                            setEditedPrice(sheet?.price?.toString() ?? "");
+                            setEditedWeight(sheet?.weight?.toString() ?? "");
                             setEditedWidth(sheet.width.toString());
                             setEditedLength(sheet.length.toString());
                           }}

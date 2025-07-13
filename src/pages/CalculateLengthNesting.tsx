@@ -4,11 +4,12 @@ import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMe
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
-import { Loader2Icon, ShieldAlert } from "lucide-react";
-import { Link } from "react-router-dom";
-import { STORAGE_KEYS, type SteelLength, type SteelLengthElement, type NestingResults, ComponentNames } from "@/lib/types";
+import { Loader2Icon } from "lucide-react";
+import { STORAGE_KEYS, type SteelLength, type SteelLengthElement, type NestingResults, ComponentNames, ITEMTYPES } from "@/lib/types";
 import { loadItemsFromLocalStorage, loadNestingConfigurationFromLocalStorage, saveNestingConfigurationToLocalStorage } from "@/lib/utils-local-storage";
 import { findBest } from "@/lib/utils-nesting";
+import EmptyStateLine from "@/components/my-components/EmptyStateLine";
+import { formatResultsLine } from "@/lib/utils";
 
 export default function CalculateLengthNesting() {
   const savedConfig = loadNestingConfigurationFromLocalStorage(ComponentNames.calculateLengthNesting);
@@ -27,8 +28,8 @@ export default function CalculateLengthNesting() {
       layouts: [],
     }
   );
-  const [selectedSteelLengthElements, setSelectedSteelLengthElements] = useState<SteelLengthElement[]>(savedConfig?.selectedElements || []);
-  const [selectedSteelLengths, setSelectedSteelLengths] = useState<SteelLength[]>(savedConfig?.selectedParents || steelLengths);
+  const [selectedSteelLengthElements, setSelectedSteelLengthElements] = useState<SteelLengthElement[]>((savedConfig?.selectedElements as SteelLengthElement[]) || []);
+  const [selectedSteelLengths, setSelectedSteelLengths] = useState<SteelLength[]>((savedConfig?.selectedParents as SteelLength[]) || steelLengths);
 
   useEffect(() => {
     saveNestingConfigurationToLocalStorage(
@@ -80,14 +81,17 @@ export default function CalculateLengthNesting() {
           width: selectedSteelLengthElement.width,
           length: selectedSteelLengthElement.length,
           name: selectedSteelLengthElement.name,
+          type: selectedSteelLengthElement.type,
           instanceId: crypto.randomUUID(),
         }))
       );
 
-      const best = findBest(relevantElements, selectedSteelLengths, { border: 0, margin: 1.6, machineName: "Saw", id: "saw", default: false, straightCuts: false });
+      const best = findBest(relevantElements, selectedSteelLengths, { border: 0, margin: 1.6, name: "Saw", id: "saw", default: false, straightCuts: false, type: ITEMTYPES.Machine });
 
       const results = selectedSteelLengths
         .map((steelLength) => ({
+          price: steelLength?.price ?? 0,
+          weight: steelLength?.weight ?? 0,
           name: steelLength.name,
           size: `${steelLength.length}`,
           count: best.counts[steelLength.id] || 0,
@@ -135,26 +139,9 @@ export default function CalculateLengthNesting() {
         <div className="flex flex-col gap-4 ">
           {(steelLengths.length === 0 || steelLengthElements.length === 0) && (
             <div className="flex flex-col gap-4  mt-8">
-              {steelLengthElements.length === 0 && (
-                <div className="flex">
-                  <ShieldAlert className="h-6 w-6 mr-2" />
-                  <p className="mr-2">{language === "da" ? "Du har ikke oprettet nogen stål længde emmer endnu." : "You have not yet created any steel length elements."}</p>
+              {steelLengthElements.length === 0 && <EmptyStateLine language={language} type={ITEMTYPES.SteelLengthElement} href="/steel-length-elements" />}
 
-                  <Link to={"/steel-length-elements"} className="flex items-center gap-2 link">
-                    <span>{language === "da" ? "Opret stål længde emmer her" : "Create steel length elements here"}</span>
-                  </Link>
-                </div>
-              )}
-
-              {steelLengths.length === 0 && (
-                <div className="flex">
-                  <ShieldAlert className="h-6 w-6 mr-2" />
-                  <p className="mr-2">{language === "da" ? "Du har ikke oprettet nogen stål længder endnu." : "You have not yet created any steel lengths."}</p>
-                  <Link to={"/steel-lengths"} className="link">
-                    <span>{language === "da" ? "Opret stål længder her" : "Create steel lengths here"}</span>
-                  </Link>
-                </div>
-              )}
+              {steelLengths.length === 0 && <EmptyStateLine language={language} type={ITEMTYPES.SteelLength} href="/steel-lengths" />}
             </div>
           )}
           {steelLengths.length !== 0 && steelLengthElements.length !== 0 && (
@@ -256,11 +243,16 @@ export default function CalculateLengthNesting() {
         {endResults.nestingParent.length !== 0 && selectedSteelLengthElements.length !== 0 && selectedSteelLengths.length !== 0 && (
           <div className="p-4">
             <h2 className="text-xl font-semibold mb-4">{language === "da" ? "Resultat" : "Result"}</h2>
-            <ul className="list-disc list-inside space-y-1">
-              {endResults.nestingParent.map((sheet, index) => (
-                <li key={index}>{language === "da" ? `Brug ${sheet.count} stk. ${sheet.name} (${sheet.size} mm)` : `Use ${sheet.count} sheet(s) of ${sheet.name} (${sheet.size} mm)`}</li>
-              ))}
-            </ul>
+            <ul className="list-disc list-inside space-y-1">{endResults.nestingParent.map((parent, index) => formatResultsLine(parent, index, language))}</ul>
+            <p className="mt-2 pt-2" style={{ borderTop: "1px solid var(--border)" }}>
+              Total:{" "}
+              <strong>
+                {endResults.nestingParent.reduce((sum, item) => {
+                  return sum + (item.price ?? 0) * (item.weight ?? 0);
+                }, 0)}{" "}
+                kr.
+              </strong>
+            </p>
           </div>
         )}
         <>
@@ -278,7 +270,7 @@ export default function CalculateLengthNesting() {
               const globalScale = Math.min(MAX_DIM / maxW, MAX_DIM / maxH);
 
               return (
-                <div style={{ borderRadius: "10px" }} className="flex flex-wrap gap-4 overflow-auto p-4 bg-muted max-h-[calc(70vh)]">
+                <div style={{ borderRadius: "10px" }} className="flex flex-wrap gap-4 overflow-auto p-4 bg-muted max-h-[calc(75vh)]">
                   {endResults.layouts.map((layout, i) => {
                     const width = layout.width * globalScale;
                     const height = layout.length * globalScale;
@@ -288,7 +280,7 @@ export default function CalculateLengthNesting() {
                     return (
                       <div key={i} className="mb-4">
                         <h3 className="text-lg font-semibold mb-2">
-                          {layout.sheetName} ({layout.sheetSize + " mm"})
+                          {layout.parentName} ({layout.parentSize.slice(0, -4) + " mm"})
                         </h3>
                         <svg className="sheet mx-auto" width={width} height={height} viewBox={`0 0 ${layout.width} ${layout.length}`}>
                           {layout.rectangles.map((rectangle, idx) => (

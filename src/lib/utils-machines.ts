@@ -1,6 +1,6 @@
-import type { MachineProfile } from "./types";
+import { ITEMTYPES, type Machine } from "./types";
 
-export function saveMachine(border: string, margin: string, name: string, machines: MachineProfile[], itemId: string): MachineProfile[] {
+export function saveMachine(border: string, margin: string, name: string, machines: Machine[], itemId: string): Machine[] {
   const editedMachine = machines.find((machine) => machine.id === itemId);
 
   const parsedBorder = parseInt(border);
@@ -8,22 +8,21 @@ export function saveMachine(border: string, margin: string, name: string, machin
 
   if (!name.trim() || isNaN(parsedBorder) || isNaN(parsedMargin)) return machines;
 
-  const exists = machines.some(
-    (machine) => machine.machineName.toLowerCase() === name.trim().toLowerCase() && machine.border === parsedBorder && machine.margin === parsedMargin && machine.id !== itemId
-  );
+  const exists = machines.some((machine) => machine.name.toLowerCase() === name.trim().toLowerCase() && machine.border === parsedBorder && machine.margin === parsedMargin && machine.id !== itemId);
 
   if (exists) {
     alert("A machine with this name and size already exists.");
     return machines;
   }
 
-  const newMachine: MachineProfile = {
+  const newMachine: Machine = {
     id: itemId,
-    machineName: name.trim(),
+    name: name.trim(),
     border: parsedBorder,
     margin: parsedMargin,
     default: editedMachine?.default ?? false,
     straightCuts: editedMachine?.straightCuts ?? false,
+    type: ITEMTYPES.Machine,
   };
 
   const updatedMachines = machines.map((machine) => {
@@ -33,26 +32,27 @@ export function saveMachine(border: string, margin: string, name: string, machin
   return updatedMachines;
 }
 
-export function addMachine(border: string, margin: string, name: string, machines: MachineProfile[]): MachineProfile[] {
+export function addMachine(border: string, margin: string, name: string, machines: Machine[]): Machine[] {
   const parsedBorder = parseInt(border);
   const parsedMargin = parseInt(margin);
 
   if (!name.trim() || isNaN(parsedBorder) || isNaN(parsedMargin)) return machines;
 
-  const exists = machines.some((machine) => machine.machineName.toLowerCase() === name.trim().toLowerCase() && machine.border === parsedBorder && machine.margin === parsedMargin);
+  const exists = machines.some((machine) => machine.name.toLowerCase() === name.trim().toLowerCase() && machine.border === parsedBorder && machine.margin === parsedMargin);
 
   if (exists) {
     alert("A machine with this name and configurations already exist.");
     return machines;
   }
 
-  const newMachine: MachineProfile = {
+  const newMachine: Machine = {
     id: crypto.randomUUID(),
-    machineName: name.trim(),
+    name: name.trim(),
     border: parsedBorder,
     margin: parsedMargin,
     default: machines.length === 0 ? true : false,
     straightCuts: false,
+    type: ITEMTYPES.Machine,
   };
 
   const updatedMachines = [...machines, newMachine];
