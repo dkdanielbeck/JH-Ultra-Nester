@@ -7,7 +7,7 @@ import { Loader2Icon } from "lucide-react";
 import { type Sheet, type Machine, type SheetElement, STORAGE_KEYS, type NestingResults, ComponentNames, ITEMTYPES } from "@/lib/types";
 import { loadItemsFromLocalStorage, loadNestingConfigurationFromLocalStorage, saveNestingConfigurationToLocalStorage } from "@/lib/utils-local-storage";
 import { findBest } from "@/lib/utils-nesting";
-import { formatResultsLine } from "@/lib/utils";
+import { formatResultsLine, getTotalPrice } from "@/lib/utils";
 import EmptyStateLine from "@/components/my-components/EmptyStateLine";
 import DropdownMenuConsolidated from "@/components/my-components/DropdownMenuConsolidated";
 
@@ -131,6 +131,7 @@ export default function CalculateSheetNesting() {
     setSelectedSheets(sheets);
     setSelectedProfile(machines.find((m) => m.default));
   };
+  console.log(sheets);
 
   return (
     <div className="flex max-h-[calc(100vh-100px)]">
@@ -239,16 +240,8 @@ export default function CalculateSheetNesting() {
         {endResults.nestingParent.length !== 0 && selectedSheetElements.length !== 0 && selectedSheets.length !== 0 && (
           <div className="p-4">
             <h2 className="text-xl font-semibold mb-4">{language === "da" ? "Resultat" : "Result"}</h2>
-            <ul className="list-disc list-inside space-y-1">{endResults.nestingParent.map((parent, index) => formatResultsLine(parent, index, language))}</ul>
-            <p className="mt-2 pt-2" style={{ borderTop: "1px solid var(--border)" }}>
-              Total:{" "}
-              <strong>
-                {endResults.nestingParent.reduce((sum, item) => {
-                  return sum + (item.price ?? 0) * (item.weight ?? 0);
-                }, 0)}{" "}
-                kr.
-              </strong>
-            </p>
+            <ul className="list-disc list-inside space-y-1">{endResults.nestingParent.map((parent, index) => formatResultsLine(parent, index))}</ul>
+            {getTotalPrice(endResults.nestingParent)}
           </div>
         )}
         <>

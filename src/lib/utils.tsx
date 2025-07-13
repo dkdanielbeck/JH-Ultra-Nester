@@ -6,32 +6,41 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatResultsLine(item: NestingParent, index: number, language: string) {
-  if (language === "da") {
-    return (
-      <li className="flex" key={index}>
-        <p>
-          Brug <strong>{item.count}</strong> stk. af{" "}
+export function formatResultsLine(item: NestingParent, index: number) {
+  const noPrice = !item.weight || item.weight === 0 || !item.price || item.price === 0 ? true : false;
+
+  return (
+    <li className="flex" key={index}>
+      <p>
+        <li>
+          {" "}
+          <strong>{item.count}</strong>{" "}
           <em>
             {item.name} ({item.size} mm)
-          </em>{" "}
-          = <strong>{item?.price && item?.weight ? item.price * item.weight + " kr." : ""}</strong>
-        </p>
-      </li>
-    );
-  } else {
-    return (
-      <li className="flex" key={index}>
-        <p>
-          Use <strong>{item.count}</strong> pcs. of{" "}
-          <em>
-            {item.name} ({item.size} mm)
-          </em>{" "}
-          = <strong>{item?.price && item?.weight ? item.price * item.weight + " kr." : ""}</strong>
-        </p>
-      </li>
-    );
-  }
+          </em>
+          {!noPrice && (
+            <>
+              {" = "}
+              <strong>{item.price * item.weight} kr.</strong>
+            </>
+          )}
+        </li>
+      </p>
+    </li>
+  );
+}
+export function getTotalPrice(nestingParent: NestingParent[]) {
+  const totalPrice = nestingParent.reduce((sum, item) => {
+    return sum + (item.price ?? 0) * (item.weight ?? 0);
+  }, 0);
+
+  return totalPrice === 0 ? (
+    <></>
+  ) : (
+    <p className="mt-2 pt-2" style={{ borderTop: "1px solid var(--border)" }}>
+      Total: <strong>{totalPrice} kr.</strong>
+    </p>
+  );
 }
 
 export const getResourceName = (language: string, itemType: ItemTypeEnum): String => {

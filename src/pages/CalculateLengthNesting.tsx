@@ -9,7 +9,7 @@ import { STORAGE_KEYS, type SteelLength, type SteelLengthElement, type NestingRe
 import { loadItemsFromLocalStorage, loadNestingConfigurationFromLocalStorage, saveNestingConfigurationToLocalStorage } from "@/lib/utils-local-storage";
 import { findBest } from "@/lib/utils-nesting";
 import EmptyStateLine from "@/components/my-components/EmptyStateLine";
-import { formatResultsLine } from "@/lib/utils";
+import { formatResultsLine, getTotalPrice } from "@/lib/utils";
 
 export default function CalculateLengthNesting() {
   const savedConfig = loadNestingConfigurationFromLocalStorage(ComponentNames.calculateLengthNesting);
@@ -243,16 +243,8 @@ export default function CalculateLengthNesting() {
         {endResults.nestingParent.length !== 0 && selectedSteelLengthElements.length !== 0 && selectedSteelLengths.length !== 0 && (
           <div className="p-4">
             <h2 className="text-xl font-semibold mb-4">{language === "da" ? "Resultat" : "Result"}</h2>
-            <ul className="list-disc list-inside space-y-1">{endResults.nestingParent.map((parent, index) => formatResultsLine(parent, index, language))}</ul>
-            <p className="mt-2 pt-2" style={{ borderTop: "1px solid var(--border)" }}>
-              Total:{" "}
-              <strong>
-                {endResults.nestingParent.reduce((sum, item) => {
-                  return sum + (item.price ?? 0) * (item.weight ?? 0);
-                }, 0)}{" "}
-                kr.
-              </strong>
-            </p>
+            <ul className="list-disc list-inside space-y-1">{endResults.nestingParent.map((parent, index) => formatResultsLine(parent, index))}</ul>
+            {getTotalPrice(endResults.nestingParent)}
           </div>
         )}
         <>
