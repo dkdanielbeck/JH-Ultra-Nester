@@ -21,7 +21,7 @@ export function formatResultsLine(item: NestingParent, index: number) {
           {!noPrice && (
             <>
               {" = "}
-              <strong>{item.price * item.weight} kr.</strong>
+              <strong>{item.count * (item.price * item.weight)} kr.</strong>
             </>
           )}
         </li>
@@ -31,7 +31,7 @@ export function formatResultsLine(item: NestingParent, index: number) {
 }
 export function getTotalPrice(nestingParent: NestingParent[]) {
   const totalPrice = nestingParent.reduce((sum, item) => {
-    return sum + (item.price ?? 0) * (item.weight ?? 0);
+    return sum + item.count * ((item.price ?? 0) * (item.weight ?? 0));
   }, 0);
 
   return totalPrice === 0 ? (

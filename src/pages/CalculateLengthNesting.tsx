@@ -1,6 +1,5 @@
 import { loadLanguage } from "@/App";
 import { useEffect, useState } from "react";
-import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
@@ -10,6 +9,7 @@ import { loadItemsFromLocalStorage, loadNestingConfigurationFromLocalStorage, sa
 import { findBest } from "@/lib/utils-nesting";
 import EmptyStateLine from "@/components/my-components/EmptyStateLine";
 import { formatResultsLine, getTotalPrice } from "@/lib/utils";
+import DropdownMenuConsolidated from "@/components/my-components/DropdownMenuConsolidated";
 
 export default function CalculateLengthNesting() {
   const savedConfig = loadNestingConfigurationFromLocalStorage(ComponentNames.calculateLengthNesting);
@@ -125,7 +125,6 @@ export default function CalculateLengthNesting() {
     setSelectedSteelLengthElements([]);
     setSelectedSteelLengths(steelLengths);
   };
-
   return (
     <div className="flex max-h-[calc(100vh-100px)]">
       <div className="flex-grow p-4 mb-2 w-1/2" style={{ borderRight: "1px solid var(--border)" }}>
@@ -146,39 +145,19 @@ export default function CalculateLengthNesting() {
           )}
           {steelLengths.length !== 0 && steelLengthElements.length !== 0 && (
             <div className="flex flex-col gap-6 ">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline">{language === "da" ? "Vælg stål længde emmer" : "Select steel length elements"}</Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  {steelLengthElements.map((steelLengthElement) => (
-                    <DropdownMenuCheckboxItem
-                      key={steelLengthElement.id}
-                      checked={selectedSteelLengthElements.some((selectedElement) => steelLengthElement.id === selectedElement.id)}
-                      onCheckedChange={() => toggleSteelElementSelection(steelLengthElement)}
-                    >
-                      {steelLengthElement.name} ({steelLengthElement.length} mm)
-                    </DropdownMenuCheckboxItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <DropdownMenuConsolidated<SteelLengthElement>
+                language={language}
+                items={steelLengthElements}
+                selectedItems={selectedSteelLengthElements}
+                onSelect={(steelLengthElement) => toggleSteelElementSelection(steelLengthElement)}
+              />
+              <DropdownMenuConsolidated<SteelLength>
+                language={language}
+                items={steelLengths}
+                selectedItems={selectedSteelLengths}
+                onSelect={(steelLength) => toggleSteelLengthSelection(steelLength)}
+              />
 
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline">{language === "da" ? "Vælg stål længder" : "Select steel lengths"}</Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  {steelLengths.map((steelLength) => (
-                    <DropdownMenuCheckboxItem
-                      key={steelLength.id}
-                      checked={selectedSteelLengths.some((selectedSteelLength) => steelLength.id === selectedSteelLength.id)}
-                      onCheckedChange={() => toggleSteelLengthSelection(steelLength)}
-                    >
-                      {steelLength.name} ({steelLength.length} mm)
-                    </DropdownMenuCheckboxItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
               {steelLengths.length !== 0 && steelLengthElements.length !== 0 && (
                 <div className="w-full flex justify-between">
                   <Button className="w-[48%]" disabled={isLoading || selectedSteelLengths?.length === 0 || selectedSteelLengthElements?.length === 0} onClick={() => getResults()}>
