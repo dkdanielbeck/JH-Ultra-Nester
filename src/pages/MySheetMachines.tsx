@@ -4,15 +4,17 @@ import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { loadLanguage } from "@/App";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ComponentNames, InputFieldValues, STORAGE_KEYS, type Machine } from "@/lib/types";
+import { ComponentNames, InputFieldValues, ITEMTYPES, type Machine } from "@/lib/types";
 import { useSort } from "@/hooks/useSort";
-import { clearInputsFromLocalStorage, loadItemsFromLocalStorage, loadInputFromLocalStorage, saveInputToLocalStorage, saveItemsToLocalStorage } from "@/lib/utils-local-storage";
-import { addMachine, saveMachine } from "@/lib/utils-machines";
+import { clearInputsFromLocalStorage, loadInputFromLocalStorage, saveInputToLocalStorage } from "@/lib/utils-local-storage";
+import { deleteMachine, fetchMachines, insertMachine, updateMachine } from "@/lib/database calls/sheetMachines";
+import EmptyStateLine from "@/components/my-components/EmptyStateLine";
+import TableSkeleton from "@/components/my-components/TableSkeleton";
 
 export default function MySheetMachines() {
   const [language] = useState<string>(() => loadLanguage());
 
-  const [machines, setMachines] = useState<Machine[]>(() => loadItemsFromLocalStorage(STORAGE_KEYS.MACHINES));
+  const [machines, setMachines] = useState<Machine[]>([]);
   const [name, setName] = useState(loadInputFromLocalStorage(InputFieldValues.name, ComponentNames.myMachines) || "");
   const [border, setBorder] = useState(loadInputFromLocalStorage(InputFieldValues.border, ComponentNames.myMachines) || "");
   const [margin, setMargin] = useState(loadInputFromLocalStorage(InputFieldValues.margin, ComponentNames.myMachines) || "");
@@ -21,15 +23,35 @@ export default function MySheetMachines() {
   const [editedMargin, setEditedMargin] = useState<string>("");
   const [beingEdited, setBeingEdited] = useState<string>("");
   const { sortedItems, handleSort } = useSort<Machine>(machines, "name");
+  const [loading, setIsLoading] = useState<boolean>(false);
 
   useEffect(() => {
-    saveItemsToLocalStorage(STORAGE_KEYS.MACHINES, machines);
-  }, [machines]);
+    const loadMachines = async () => {
+      setIsLoading(true);
+      try {
+        const data = await fetchMachines();
+        setMachines(data);
+      } catch (err) {
+        console.error("Failed to fetch machines:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  const addNewMachine = () => {
-    const updatedMachines = addMachine(border, margin, name, machines);
+    loadMachines();
+  }, []);
 
-    setMachines(updatedMachines);
+  const addNewMachine = async () => {
+    const newMachine = await insertMachine({
+      name,
+      border: parseFloat(border),
+      margin: parseFloat(margin),
+      type: ITEMTYPES.Machine,
+      default: false,
+      straightCuts: false,
+    });
+
+    setMachines([...machines, newMachine]);
 
     setName("");
     setBorder("");
@@ -44,10 +66,21 @@ export default function MySheetMachines() {
     clearInputsFromLocalStorage([InputFieldValues.name, InputFieldValues.border, InputFieldValues.margin], ComponentNames.myMachines);
   };
 
-  const SaveEditedMachine = () => {
-    const updatedMachines = saveMachine(editedBorder, editedMargin, editedName, machines, beingEdited);
+  const SaveEditedMachine = async () => {
+    const editedMachine = machines.find((machine) => machine.id === beingEdited);
+    const newEditedMachine = {
+      name: editedName,
+      border: parseFloat(editedBorder),
+      margin: parseFloat(editedMargin),
+      type: ITEMTYPES.Machine,
+      default: editedMachine ? editedMachine.default : false,
+      straightCuts: editedMachine ? editedMachine.straightCuts : false,
+    };
 
-    setMachines(updatedMachines);
+    await updateMachine(beingEdited, newEditedMachine);
+
+    const updated = machines.map((machine) => (machine.id === beingEdited ? { ...machine, newEditedMachine } : machine));
+    setMachines(updated);
 
     setEditedName("");
     setEditedMargin("");
@@ -55,11 +88,26 @@ export default function MySheetMachines() {
     setBeingEdited("");
   };
 
-  const setDefault = (machineId: string) => {
+  const setDefault = async (machineId: string) => {
+    const currentDefault = machines.find((m) => m.default);
+    const targetMachine = machines.find((m) => m.id === machineId);
+
+    if (!targetMachine || targetMachine.default) return;
+
+    const updates: Promise<void>[] = [];
+
+    if (currentDefault && currentDefault.id !== machineId) {
+      updates.push(updateMachine(currentDefault.id, { default: false }));
+    }
+
+    updates.push(updateMachine(machineId, { default: true }));
+
+    await Promise.all(updates);
+
     const updatedMachines = machines.map((machine) => {
       if (machine.id === machineId) {
         return { ...machine, default: true };
-      } else if (machine?.default === true) {
+      } else if (machine.default) {
         return { ...machine, default: false };
       } else {
         return machine;
@@ -69,14 +117,15 @@ export default function MySheetMachines() {
     setMachines(updatedMachines);
   };
 
-  const setOnlyStraightCuts = (machineId: string) => {
-    const updatedMachines = machines.map((machine) => {
-      if (machine.id === machineId) {
-        return { ...machine, straightCuts: !machine.straightCuts };
-      } else {
-        return machine;
-      }
-    });
+  const setOnlyStraightCuts = async (machineId: string) => {
+    const targetMachine = machines.find((m) => m.id === machineId);
+    if (!targetMachine) return;
+
+    const newStraightCutsValue = !targetMachine.straightCuts;
+
+    await updateMachine(machineId, { straightCuts: newStraightCutsValue });
+
+    const updatedMachines = machines.map((machine) => (machine.id === machineId ? { ...machine, straightCuts: newStraightCutsValue } : machine));
 
     setMachines(updatedMachines);
   };
@@ -125,8 +174,9 @@ export default function MySheetMachines() {
           </Button>
         </div>
       </div>
-
-      {sortedItems.length !== 0 && (
+      {loading && <TableSkeleton />}
+      {!loading && sortedItems.length === 0 && <EmptyStateLine language={language} type={ITEMTYPES.Machine} />}
+      {sortedItems.length !== 0 && !loading && (
         <div style={{ borderRadius: "10px" }} className="flex-grow overflow-auto p-4 bg-muted max-h-[calc(70vh)]">
           <Table>
             <TableHeader className="top-0 bg-muted z-10">
@@ -191,7 +241,15 @@ export default function MySheetMachines() {
                       <Checkbox className="checkbox" checked={machine?.straightCuts === true} onCheckedChange={() => setOnlyStraightCuts(machine.id)} />
                     </TableCell>
                     <TableCell className="flex justify-end space-x-2">
-                      <Button className="mr-2" variant="destructive" size="sm" onClick={() => setMachines(machines.filter((emachine) => emachine.id !== machine.id))}>
+                      <Button
+                        className="mr-2"
+                        variant="destructive"
+                        size="sm"
+                        onClick={async () => {
+                          await deleteMachine(machine.id);
+                          setMachines(machines.filter((el) => el.id !== machine.id));
+                        }}
+                      >
                         {language === "da" ? "Slet" : "Remove"}
                       </Button>
                       {shouldEdit ? (

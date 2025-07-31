@@ -14,8 +14,6 @@ export type SheetElement = {
   width: number;
   length: number;
   instanceId?: string;
-  weight?: number;
-  price?: number;
   type: typeof ITEMTYPES.SheetElement;
 };
 export type SteelLength = {
@@ -33,8 +31,7 @@ export type SteelLengthElement = {
   length: number;
   width: number;
   instanceId?: string;
-  weight?: number;
-  price?: number;
+
   type: typeof ITEMTYPES.SteelLengthElement;
 };
 
@@ -119,10 +116,11 @@ export interface NestingParent {
   price: number;
 }
 
-export type InputField = "name" | "width" | "length" | "margin" | "border" | "weight" | "price";
+export type InputField = "name" | "width" | "length" | "margin" | "border" | "weight" | "price" | "email";
 
 export const InputFieldValues: Record<InputField, InputField> = {
   name: "name",
+  email: "email",
   width: "width",
   length: "length",
   margin: "margin",
@@ -131,7 +129,7 @@ export const InputFieldValues: Record<InputField, InputField> = {
   price: "border",
 };
 
-export type ComponentName = "mySheetElements" | "mySheets" | "mySteelLengths" | "mySteelLengthElements" | "myMachines" | "calculateSheetNesting" | "calculateLengthNesting";
+export type ComponentName = "mySheetElements" | "mySheets" | "mySteelLengths" | "mySteelLengthElements" | "myMachines" | "calculateSheetNesting" | "calculateLengthNesting" | "signIn";
 
 export const ComponentNames: Record<ComponentName, ComponentName> = {
   mySheetElements: "mySheetElements",
@@ -141,6 +139,7 @@ export const ComponentNames: Record<ComponentName, ComponentName> = {
   myMachines: "myMachines",
   calculateSheetNesting: "calculateSheetNesting",
   calculateLengthNesting: "calculateLengthNesting",
+  signIn: "signIn",
 };
 
 export interface SavedNestingConfiguration {

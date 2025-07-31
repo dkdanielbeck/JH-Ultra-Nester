@@ -76,3 +76,18 @@ export function getNamingScheme(item: Sheet | SheetElement | SteelLength | Steel
       return "";
   }
 }
+
+export function ensureLengthIsLargest<T extends { width?: number; length?: number }>(item: T): T {
+  if (typeof item.width === "number" && typeof item.length === "number" && item.width > item.length) {
+    return {
+      ...item,
+      width: item.length,
+      length: item.width,
+    };
+  }
+  return item;
+}
+
+export const isValidEmail = (email: string): boolean => {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+};

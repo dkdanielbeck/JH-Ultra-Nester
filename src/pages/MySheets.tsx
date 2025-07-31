@@ -3,15 +3,17 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { loadLanguage } from "@/App";
-import { ComponentNames, InputFieldValues, ITEMTYPES, STORAGE_KEYS, type Sheet } from "@/lib/types";
+import { ComponentNames, InputFieldValues, ITEMTYPES, type Sheet } from "@/lib/types";
 import { useSort } from "@/hooks/useSort";
-import { clearInputsFromLocalStorage, loadItemsFromLocalStorage, loadInputFromLocalStorage, saveInputToLocalStorage, saveItemsToLocalStorage } from "@/lib/utils-local-storage";
-import { addSheetOrSheetElement, saveSheetOrSheetElement } from "@/lib/utils-sheets-and-sheet-elements";
+import { clearInputsFromLocalStorage, loadInputFromLocalStorage, saveInputToLocalStorage } from "@/lib/utils-local-storage";
+import { deleteSheet, fetchSheets, insertSheet, updateSheet } from "@/lib/database calls/sheets";
+import TableSkeleton from "@/components/my-components/TableSkeleton";
+import EmptyStateLine from "@/components/my-components/EmptyStateLine";
 
 export default function MySheets() {
   const [language] = useState<string>(() => loadLanguage());
 
-  const [sheets, setSheets] = useState<Sheet[]>(() => loadItemsFromLocalStorage(STORAGE_KEYS.SHEETS));
+  const [sheets, setSheets] = useState<Sheet[]>([]);
 
   const [name, setName] = useState<string>(() => loadInputFromLocalStorage(InputFieldValues.name, ComponentNames.mySheets) || "");
   const [width, setWidth] = useState<string>(() => loadInputFromLocalStorage(InputFieldValues.width, ComponentNames.mySheets) || "");
@@ -19,6 +21,7 @@ export default function MySheets() {
   const [weight, setWeight] = useState<string>(() => loadInputFromLocalStorage(InputFieldValues.weight, ComponentNames.mySheets) || "");
   const [length, setLength] = useState<string>(() => loadInputFromLocalStorage(InputFieldValues.length, ComponentNames.mySheets) || "");
   const [editedName, setEditedName] = useState<string>("");
+  const [loading, setIsLoading] = useState<boolean>(false);
   const [editedWidth, setEditedWidth] = useState<string>("");
   const [editedPrice, setEditedPrice] = useState<string>("");
   const [editedWeight, setEditedWeight] = useState<string>("");
@@ -28,13 +31,31 @@ export default function MySheets() {
   const { sortedItems, handleSort } = useSort<Sheet>(sheets, "length");
 
   useEffect(() => {
-    saveItemsToLocalStorage(STORAGE_KEYS.SHEETS, sheets);
-  }, [sheets]);
+    const loadSheets = async () => {
+      setIsLoading(true);
+      try {
+        const data = await fetchSheets();
+        setSheets(data);
+      } catch (err) {
+        console.error("Failed to fetch sheets:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  const addSheet = () => {
-    const updatedSheets = addSheetOrSheetElement(width, length, name, price, weight, sheets, ITEMTYPES.Sheet);
-    setSheets(updatedSheets as Sheet[]);
+    loadSheets();
+  }, []);
 
+  const addSheet = async () => {
+    const newSheet = await insertSheet({
+      name,
+      length: parseFloat(length),
+      width: parseFloat(width),
+      price: parseFloat(price),
+      weight: parseFloat(weight),
+      type: ITEMTYPES.Sheet,
+    });
+    setSheets([...sheets, newSheet]);
     setName("");
     setWidth("");
     setPrice("");
@@ -42,6 +63,7 @@ export default function MySheets() {
     setLength("");
     clearInputsFromLocalStorage([InputFieldValues.name, InputFieldValues.width, InputFieldValues.length, InputFieldValues.weight, InputFieldValues.price], ComponentNames.mySheets);
   };
+
   const clearInputs = () => {
     setName("");
     setWidth("");
@@ -50,10 +72,21 @@ export default function MySheets() {
     setLength("");
     clearInputsFromLocalStorage([InputFieldValues.name, InputFieldValues.width, InputFieldValues.length, InputFieldValues.weight, InputFieldValues.price], ComponentNames.mySheets);
   };
-  const SaveEditedSheet = () => {
-    const updatedSheets = saveSheetOrSheetElement(editedWidth, editedLength, editedName, editedPrice, editedWeight, sheets, beingEdited, ITEMTYPES.Sheet);
 
-    setSheets(updatedSheets as Sheet[]);
+  const SaveEditedSheet = async () => {
+    const newSheet = {
+      name: editedName,
+      width: parseFloat(editedWidth),
+      length: parseFloat(editedLength),
+      price: parseFloat(editedPrice),
+      weight: parseFloat(editedWeight),
+      type: ITEMTYPES.Sheet,
+    };
+
+    await updateSheet(beingEdited, newSheet);
+
+    const updated = sheets.map((sheet) => (sheet.id === beingEdited ? { ...sheet, ...newSheet } : sheet));
+    setSheets(updated);
 
     setEditedName("");
     setEditedWidth("");
@@ -125,8 +158,9 @@ export default function MySheets() {
           </Button>
         </div>
       </div>
-
-      {sortedItems.length !== 0 && (
+      {loading && <TableSkeleton />}
+      {!loading && sortedItems.length === 0 && <EmptyStateLine language={language} type={ITEMTYPES.Sheet} />}
+      {sortedItems.length !== 0 && !loading && (
         <div style={{ borderRadius: "10px" }} className="flex-grow overflow-auto p-4 bg-muted max-h-[calc(70vh)]">
           <Table>
             <TableHeader className="top-0 bg-muted z-10">
@@ -208,7 +242,15 @@ export default function MySheets() {
                       )}
                     </TableCell>
                     <TableCell className="flex justify-end space-x-2">
-                      <Button className="mr-2" variant="destructive" size="sm" onClick={() => setSheets(sheets.filter((el) => el.id !== sheet.id))}>
+                      <Button
+                        className="mr-2"
+                        variant="destructive"
+                        size="sm"
+                        onClick={async () => {
+                          await deleteSheet(sheet.id);
+                          setSheets(sheets.filter((el) => el.id !== sheet.id));
+                        }}
+                      >
                         {language === "da" ? "Slet" : "Remove"}
                       </Button>
                       {shouldEdit ? (

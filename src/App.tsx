@@ -5,6 +5,7 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarInset,
   SidebarMenu,
@@ -19,13 +20,16 @@ import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMe
 import MySheets from "@/pages/MySheets";
 import MySheetElements from "@/pages/MySheetElements";
 import { Button } from "./components/ui/button";
-import { useEffect, useState } from "react";
 import MySheetMachines from "./pages/MySheetMachines";
 import { Link } from "react-router-dom";
 import MySteelLengths from "./pages/MySteelLengths";
 import MySteelLengthElements from "./pages/MySteelLengthElements";
 import CalculateSheetNesting from "@/pages/CalculateSheetNesting";
 import CalculateLengthNesting from "./pages/CalculateLengthNesting";
+import PrivateRoute from "./components/my-components/PrivateRoute";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
+import SignIn from "./pages/SignIn";
 
 const STORAGE_KEY = "language";
 
@@ -50,49 +54,74 @@ function saveLanguage(languageString: string) {
 
 function App() {
   const [language, setLanguage] = useState<string>(() => loadLanguage());
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsAuthenticated(!!session);
+    });
+
+    // Optional: auto-update on login/logout
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthenticated(!!session);
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
 
   const menuItems = [
     {
-      title: language === "da" ? "Udregn plade nesting" : "Calculate sheet nesting",
-      icon: TableCellsMerge,
-      path: "/calculate-sheet-nesting",
-      divider: false,
+      title: language === "da" ? "Plade nesting" : "Sheet nesting",
+      children: [
+        {
+          title: language === "da" ? "Udregn plade nesting" : "Calculate sheet nesting",
+          icon: TableCellsMerge,
+          path: "/calculate-sheet-nesting",
+          divider: false,
+        },
+        {
+          title: language === "da" ? "Mine plader" : "My sheets",
+          icon: Square,
+          path: "/sheets",
+          divider: false,
+        },
+        {
+          title: language === "da" ? "Mine plade emner" : "My sheet elements",
+          icon: RectangleHorizontal,
+          path: "/sheet-elements",
+          divider: false,
+        },
+        {
+          title: language === "da" ? "Mine plade maskiner" : "My sheet machines",
+          icon: Zap,
+          path: "/sheet-machines",
+          divider: true,
+        },
+      ],
     },
     {
-      title: language === "da" ? "Udregn stål længde nesting" : "Calculate steel length nesting",
-      icon: SquareSplitHorizontal,
-      path: "/calculate-length-nesting",
-      divider: true,
-    },
-    {
-      title: language === "da" ? "Mine plader" : "My sheets",
-      icon: Square,
-      path: "/sheets",
-      divider: false,
-    },
-    {
-      title: language === "da" ? "Mine plade emner" : "My sheet elements",
-      icon: RectangleHorizontal,
-      path: "/sheet-elements",
-      divider: false,
-    },
-    {
-      title: language === "da" ? "Mine plade maskiner" : "My sheet machines",
-      icon: Zap,
-      path: "/sheet-machines",
-      divider: true,
-    },
-    {
-      title: language === "da" ? "Mine stål længder" : "My steel lengths",
-      icon: TicketMinus,
-      path: "/steel-lengths",
-      divider: false,
-    },
-    {
-      title: language === "da" ? "Mine stål længde emner" : "My steel length elements",
-      icon: Ticket,
-      path: "/steel-length-elements",
-      divider: true,
+      title: language === "da" ? "Stål længde nesting" : "Steel length nesting",
+      children: [
+        {
+          title: language === "da" ? "Udregn stål længde nesting" : "Calculate steel length nesting",
+          icon: SquareSplitHorizontal,
+          path: "/calculate-length-nesting",
+          divider: false,
+        },
+        {
+          title: language === "da" ? "Mine stål længder" : "My steel lengths",
+          icon: TicketMinus,
+          path: "/steel-lengths",
+          divider: false,
+        },
+        {
+          title: language === "da" ? "Mine stål længde emner" : "My steel length elements",
+          icon: Ticket,
+          path: "/steel-length-elements",
+          divider: true,
+        },
+      ],
     },
   ];
 
@@ -103,32 +132,37 @@ function App() {
   return (
     <Router>
       <SidebarProvider>
-        <Sidebar>
-          <SidebarHeader>Ultra Nester</SidebarHeader>
-          <SidebarContent className="gap-0">
-            <SidebarGroup>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {menuItems.map((item) => {
-                    return (
-                      <SidebarMenuItem style={item.divider ? { borderBottom: "1px solid var(--border)" } : {}} key={item.title}>
-                        <SidebarMenuButton asChild>
-                          <Link to={item.path} className="flex items-center gap-2">
-                            <item.icon className="h-4 w-4" />
-                            <span>{item.title}</span>
-                          </Link>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    );
-                  })}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          </SidebarContent>
-        </Sidebar>
+        {isAuthenticated && (
+          <Sidebar>
+            <SidebarHeader>Ultra Nester</SidebarHeader>
+            <SidebarContent className="gap-0">
+              {menuItems.map((item) => (
+                <SidebarGroup key={item.title}>
+                  <SidebarGroupLabel>{item.title}</SidebarGroupLabel>
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      {item.children.map((child) => {
+                        return (
+                          <SidebarMenuItem style={child.divider ? { borderBottom: "1px solid var(--border)", paddingBottom: "10px" } : {}} key={child.title}>
+                            <SidebarMenuButton asChild>
+                              <Link to={child.path} className="flex items-center gap-2">
+                                <child.icon className="h-4 w-4" />
+                                <span>{child.title}</span>
+                              </Link>
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                        );
+                      })}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                </SidebarGroup>
+              ))}
+            </SidebarContent>
+          </Sidebar>
+        )}
         <SidebarInset>
           <header className="bg-background sticky top-0 flex h-16 shrink-0 items-center gap-2 border-b px-4">
-            <SidebarTrigger className="-ml-1" />
+            {isAuthenticated && <SidebarTrigger className="-ml-1" />}
             <Separator orientation="vertical" className="mr-2 h-4" />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -157,17 +191,39 @@ function App() {
                 </DropdownMenuCheckboxItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            {isAuthenticated && (
+              <Button
+                onClick={async () => {
+                  await supabase.auth.signOut();
+                  window.location.href = "/JH-Ultra-Nester/#/sign-in";
+                }}
+                className="ml-auto"
+                variant="ghost"
+              >
+                {language === "da" ? "Log ud" : "Sign out"}
+              </Button>
+            )}
           </header>
           <div className="flex flex-1 flex-col gap-4 p-4">
             <Routes>
-              <Route path="/" element={<Navigate to="/calculate-sheet-nesting" replace />} />
-              <Route path="/calculate-sheet-nesting" element={<CalculateSheetNesting />} />
-              <Route path="/calculate-length-nesting" element={<CalculateLengthNesting />} />
-              <Route path="/sheets" element={<MySheets />} />
-              <Route path="/sheet-elements" element={<MySheetElements />} />
-              <Route path="/sheet-machines" element={<MySheetMachines />} />
-              <Route path="/steel-lengths" element={<MySteelLengths />} />
-              <Route path="/steel-length-elements" element={<MySteelLengthElements />} />
+              <Route path="/" element={<RedirectToStart />} />
+              <Route path="/sign-in" element={<SignIn />} />
+              <Route
+                path="/*"
+                element={
+                  <PrivateRoute>
+                    <Routes>
+                      <Route path="/calculate-sheet-nesting" element={<CalculateSheetNesting />} />
+                      <Route path="/calculate-length-nesting" element={<CalculateLengthNesting />} />
+                      <Route path="/sheets" element={<MySheets />} />
+                      <Route path="/sheet-elements" element={<MySheetElements />} />
+                      <Route path="/sheet-machines" element={<MySheetMachines />} />
+                      <Route path="/steel-lengths" element={<MySteelLengths />} />
+                      <Route path="/steel-length-elements" element={<MySteelLengthElements />} />
+                    </Routes>
+                  </PrivateRoute>
+                }
+              />
             </Routes>
           </div>
         </SidebarInset>
@@ -177,3 +233,19 @@ function App() {
 }
 
 export default App;
+
+function RedirectToStart() {
+  const [loading, setLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsAuthenticated(!!session);
+      setLoading(false);
+    });
+  }, []);
+
+  if (loading) return null;
+
+  return isAuthenticated ? <Navigate to="/calculate-sheet-nesting" replace /> : <Navigate to="/sign-in" replace />;
+}

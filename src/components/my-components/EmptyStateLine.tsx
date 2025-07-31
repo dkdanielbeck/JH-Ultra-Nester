@@ -4,7 +4,7 @@ import { ShieldAlert } from "lucide-react";
 import { Link } from "react-router-dom";
 
 export interface EmptyStateLineProps {
-  href: string;
+  href?: string;
   language: string;
   type: ItemTypeEnum;
 }
@@ -15,9 +15,11 @@ export default function EmptyStateLine({ href, language, type }: EmptyStateLineP
       <ShieldAlert className="h-6 w-6 mr-2" />
       <div>
         <p className="mr-2">{language === "da" ? `Du har ikke oprettet nogen ${getResourceName(language, type)} endnu.` : `You have not yet created any ${getResourceName(language, type)}.`}</p>
-        <Link to={href} className="link">
-          <span>{language === "da" ? `Opret ${getResourceName(language, type)}` : `Create ${getResourceName(language, type)}`}</span>
-        </Link>
+        {href && (
+          <Link to={href} className="link">
+            <span>{language === "da" ? `Opret ${getResourceName(language, type)} her` : `Create ${getResourceName(language, type)} here`}</span>
+          </Link>
+        )}
       </div>
     </div>
   );

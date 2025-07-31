@@ -3,45 +3,72 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { loadLanguage } from "@/App";
-import { ComponentNames, InputFieldValues, ITEMTYPES, STORAGE_KEYS, type SteelLengthElement } from "@/lib/types";
+import { ComponentNames, InputFieldValues, ITEMTYPES, type SteelLengthElement } from "@/lib/types";
 import { useSort } from "@/hooks/useSort";
-import { clearInputsFromLocalStorage, loadItemsFromLocalStorage, loadInputFromLocalStorage, saveInputToLocalStorage, saveItemsToLocalStorage } from "@/lib/utils-local-storage";
-import { addSteelLengthOrSteelLengthElement, saveSteelLengthOrSteelLengthElement } from "@/lib/utils-steel-lengths-and-length-elements";
+import { clearInputsFromLocalStorage, loadInputFromLocalStorage, saveInputToLocalStorage } from "@/lib/utils-local-storage";
+import { deleteSteelLengthElement, fetchSteelLengthElements, insertSteelLengthElement, updateSteelLengthElement } from "@/lib/database calls/steelLengthElements";
+import TableSkeleton from "@/components/my-components/TableSkeleton";
+import EmptyStateLine from "@/components/my-components/EmptyStateLine";
 
 export default function MySteelLengthElements() {
   const [language] = useState<string>(() => loadLanguage());
 
-  const [steelLengthElements, setSteelLengthElements] = useState<SteelLengthElement[]>(() => loadItemsFromLocalStorage(STORAGE_KEYS.STEELLENGTHELEMENTS));
+  const [steelLengthElements, setSteelLengthElements] = useState<SteelLengthElement[]>([]);
   const [name, setName] = useState<string>(() => loadInputFromLocalStorage(InputFieldValues.name, ComponentNames.mySteelLengthElements) || "");
   const [length, setLength] = useState<string>(() => loadInputFromLocalStorage(InputFieldValues.length, ComponentNames.mySteelLengthElements) || "");
   const [editedName, setEditedName] = useState<string>("");
   const [editedLength, setEditedLength] = useState<string>("");
   const [beingEdited, setBeingEdited] = useState<string>("");
   const { sortedItems, handleSort } = useSort<SteelLengthElement>(steelLengthElements, "length");
+  const [loading, setIsLoading] = useState<boolean>(false);
 
   useEffect(() => {
-    saveItemsToLocalStorage(STORAGE_KEYS.STEELLENGTHELEMENTS, steelLengthElements);
-  }, [steelLengthElements]);
+    const loadSteelLengthElements = async () => {
+      setIsLoading(true);
+      try {
+        const data = await fetchSteelLengthElements();
+        setSteelLengthElements(data);
+      } catch (err) {
+        console.error("Failed to fetch steel length elements:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  const addNewSteelLengthElement = () => {
-    const updatedSteelLengthElements = addSteelLengthOrSteelLengthElement(length, name, undefined, undefined, steelLengthElements, ITEMTYPES.SteelLengthElement);
+    loadSteelLengthElements();
+  }, []);
 
-    setSteelLengthElements(updatedSteelLengthElements as SteelLengthElement[]);
+  const addNewSteelLengthElement = async () => {
+    const newStelLengthElement = await insertSteelLengthElement({
+      name,
+      length: parseFloat(length),
+      width: 200,
+      type: ITEMTYPES.SteelLengthElement,
+    });
 
+    setSteelLengthElements([...steelLengthElements, newStelLengthElement]);
     setName("");
     setLength("");
+    clearInputsFromLocalStorage([InputFieldValues.name, InputFieldValues.length], ComponentNames.mySteelLengthElements);
   };
+
   const clearInputs = () => {
     setName("");
     setLength("");
     clearInputsFromLocalStorage([InputFieldValues.name, InputFieldValues.length], ComponentNames.mySteelLengthElements);
   };
 
-  const SaveEditedSteelLengthElement = () => {
-    const updatedSteelLengthElements = saveSteelLengthOrSteelLengthElement(editedLength, editedName, undefined, undefined, steelLengthElements, beingEdited, ITEMTYPES.SteelLengthElement);
+  const SaveEditedSteelLengthElement = async () => {
+    const newSteelLengthElement = {
+      name: editedName,
+      width: 200,
+      length: parseFloat(editedLength),
+      type: ITEMTYPES.SteelLengthElement,
+    };
+    await updateSteelLengthElement(beingEdited, newSteelLengthElement);
 
-    setSteelLengthElements(updatedSteelLengthElements as SteelLengthElement[]);
-
+    const updated = steelLengthElements.map((steelLengthElement) => (steelLengthElement.id === beingEdited ? { ...steelLengthElement, ...newSteelLengthElement } : steelLengthElement));
+    setSteelLengthElements(updated);
     setEditedName("");
     setEditedLength("");
     setBeingEdited("");
@@ -83,7 +110,9 @@ export default function MySteelLengthElements() {
         </div>
       </div>
 
-      {sortedItems.length !== 0 && (
+      {loading && <TableSkeleton />}
+      {!loading && sortedItems.length === 0 && <EmptyStateLine language={language} type={ITEMTYPES.SteelLengthElement} />}
+      {sortedItems.length !== 0 && !loading && (
         <div style={{ borderRadius: "10px" }} className="flex-grow overflow-auto p-4 bg-muted max-h-[calc(70vh)]">
           <Table>
             <TableHeader className="top-0 bg-muted z-10">
@@ -125,7 +154,15 @@ export default function MySteelLengthElements() {
                     </TableCell>
 
                     <TableCell className="flex justify-end space-x-2">
-                      <Button className="mr-2" variant="destructive" size="sm" onClick={() => setSteelLengthElements(steelLengthElements.filter((el) => el.id !== steelLengthElement.id))}>
+                      <Button
+                        className="mr-2"
+                        variant="destructive"
+                        size="sm"
+                        onClick={async () => {
+                          await deleteSteelLengthElement(steelLengthElement.id);
+                          setSteelLengthElements(steelLengthElements.filter((el) => el.id !== steelLengthElement.id));
+                        }}
+                      >
                         {language === "da" ? "Slet" : "Remove"}
                       </Button>
                       {shouldEdit ? (

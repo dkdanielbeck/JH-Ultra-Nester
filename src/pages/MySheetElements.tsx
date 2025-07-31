@@ -3,15 +3,17 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { loadLanguage } from "@/App";
-import { ComponentNames, InputFieldValues, ITEMTYPES, STORAGE_KEYS, type SheetElement } from "@/lib/types";
+import { ComponentNames, InputFieldValues, ITEMTYPES, type SheetElement } from "@/lib/types";
 import { useSort } from "@/hooks/useSort";
-import { clearInputsFromLocalStorage, loadItemsFromLocalStorage, loadInputFromLocalStorage, saveInputToLocalStorage, saveItemsToLocalStorage } from "@/lib/utils-local-storage";
-import { addSheetOrSheetElement, saveSheetOrSheetElement } from "@/lib/utils-sheets-and-sheet-elements";
+import { clearInputsFromLocalStorage, loadInputFromLocalStorage, saveInputToLocalStorage } from "@/lib/utils-local-storage";
+import { deleteSheetElement, fetchSheetElements, insertSheetElement, updateSheetElement } from "@/lib/database calls/sheetElements";
+import TableSkeleton from "@/components/my-components/TableSkeleton";
+import EmptyStateLine from "@/components/my-components/EmptyStateLine";
 
 export default function MySheetElements() {
   const [language] = useState<string>(() => loadLanguage());
 
-  const [sheetElements, setSheetElements] = useState<SheetElement[]>(() => loadItemsFromLocalStorage(STORAGE_KEYS.SHEETELEMENTS));
+  const [sheetElements, setSheetElements] = useState<SheetElement[]>([]);
   const [name, setName] = useState<string>(() => loadInputFromLocalStorage(InputFieldValues.name, ComponentNames.mySheetElements) || "");
   const [width, setWidth] = useState<string>(() => loadInputFromLocalStorage(InputFieldValues.width, ComponentNames.mySheetElements) || "");
   const [length, setLength] = useState<string>(() => loadInputFromLocalStorage(InputFieldValues.length, ComponentNames.mySheetElements) || "");
@@ -21,14 +23,32 @@ export default function MySheetElements() {
   const [editedLength, setEditedLength] = useState<string>("");
   const [beingEdited, setBeingEdited] = useState<string>("");
   const { sortedItems, handleSort } = useSort<SheetElement>(sheetElements, "length");
+  const [loading, setIsLoading] = useState<boolean>(false);
+
   useEffect(() => {
-    saveItemsToLocalStorage(STORAGE_KEYS.SHEETELEMENTS, sheetElements);
-  }, [sheetElements]);
+    const loadSheetElements = async () => {
+      setIsLoading(true);
+      try {
+        const data = await fetchSheetElements();
+        setSheetElements(data);
+      } catch (err) {
+        console.error("Failed to fetch sheet elements:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  const addSheetElement = () => {
-    const updatedSheetElements = addSheetOrSheetElement(width, length, name, undefined, undefined, sheetElements, ITEMTYPES.SheetElement);
+    loadSheetElements();
+  }, []);
 
-    setSheetElements(updatedSheetElements as SheetElement[]);
+  const addSheetElement = async () => {
+    const newSheetElement = await insertSheetElement({
+      name,
+      length: parseFloat(length),
+      width: parseFloat(width),
+      type: ITEMTYPES.SheetElement,
+    });
+    setSheetElements([...sheetElements, newSheetElement]);
 
     setName("");
     setWidth("");
@@ -42,10 +62,18 @@ export default function MySheetElements() {
     clearInputsFromLocalStorage([InputFieldValues.name, InputFieldValues.width, InputFieldValues.length], ComponentNames.mySheetElements);
   };
 
-  const SaveEditedSheetElement = () => {
-    const updatedSheetElements = saveSheetOrSheetElement(editedWidth, editedLength, editedName, undefined, undefined, sheetElements, beingEdited, ITEMTYPES.SheetElement);
+  const SaveEditedSheetElement = async () => {
+    const newSheetElement = {
+      name: editedName,
+      width: parseFloat(editedWidth),
+      length: parseFloat(editedLength),
+      type: ITEMTYPES.SheetElement,
+    };
 
-    setSheetElements(updatedSheetElements as SheetElement[]);
+    await updateSheetElement(beingEdited, newSheetElement);
+
+    const updated = sheetElements.map((sheetElement) => (sheetElement.id === beingEdited ? { ...sheetElement, ...newSheetElement } : sheetElement));
+    setSheetElements(updated);
 
     setEditedName("");
     setEditedWidth("");
@@ -97,8 +125,9 @@ export default function MySheetElements() {
           </Button>
         </div>
       </div>
-
-      {sortedItems.length !== 0 && (
+      {loading && <TableSkeleton />}
+      {!loading && sortedItems.length === 0 && <EmptyStateLine language={language} type={ITEMTYPES.SheetElement} />}
+      {sortedItems.length !== 0 && !loading && (
         <div style={{ borderRadius: "10px" }} className="flex-grow overflow-auto p-4 bg-muted max-h-[calc(70vh)]">
           <Table>
             <TableHeader className="top-0 bg-muted z-10">
@@ -149,7 +178,15 @@ export default function MySheetElements() {
                       )}
                     </TableCell>
                     <TableCell className="flex justify-end space-x-2">
-                      <Button className="mr-2" variant="destructive" size="sm" onClick={() => setSheetElements(sheetElements.filter((el) => el.id !== sheetElement.id))}>
+                      <Button
+                        className="mr-2"
+                        variant="destructive"
+                        size="sm"
+                        onClick={async () => {
+                          await deleteSheetElement(sheetElement.id);
+                          setSheetElements(sheetElements.filter((el) => el.id !== sheetElement.id));
+                        }}
+                      >
                         {language === "da" ? "Slet" : "Remove"}
                       </Button>
                       {shouldEdit ? (
