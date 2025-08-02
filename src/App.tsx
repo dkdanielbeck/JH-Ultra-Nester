@@ -27,7 +27,7 @@ import MySteelLengthElements from "./pages/MySteelLengthElements";
 import CalculateSheetNesting from "@/pages/CalculateSheetNesting";
 import CalculateLengthNesting from "./pages/CalculateLengthNesting";
 import PrivateRoute from "./components/my-components/PrivateRoute";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import SignIn from "./pages/SignIn";
 
@@ -55,6 +55,7 @@ function saveLanguage(languageString: string) {
 function App() {
   const [language, setLanguage] = useState<string>(() => loadLanguage());
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [showGuideVideo, setShowGuideVideo] = useState(false);
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setIsAuthenticated(!!session);
@@ -192,6 +193,11 @@ function App() {
               </DropdownMenuContent>
             </DropdownMenu>
             {isAuthenticated && (
+              <Button onClick={() => setShowGuideVideo(true)} variant="outline">
+                {language === "da" ? "Se guide video" : "Watch guide video"}
+              </Button>
+            )}
+            {isAuthenticated && (
               <Button
                 onClick={async () => {
                   await supabase.auth.signOut();
@@ -226,6 +232,17 @@ function App() {
               />
             </Routes>
           </div>
+          {showGuideVideo && (
+            <div className="fixed bottom-4 left-4  w-[90%] max-w-[1200px] bg-background border rounded-xl shadow-lg z-50 flex flex-col" style={{ zIndex: 50 }}>
+              <div className="flex justify-between items-center p-2 border-b">
+                <span className="text-sm font-medium">{language === "da" ? "Guide video" : "Guide Video"}</span>
+                <Button onClick={() => setShowGuideVideo(false)} className="text-sm hover:opacity-75" aria-label="Close">
+                  ✕
+                </Button>
+              </div>
+              <video controls className="w-full h-full rounded-b-xl" preload="metadata" src="./guide.mp4" />
+            </div>
+          )}
         </SidebarInset>
       </SidebarProvider>
     </Router>

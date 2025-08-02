@@ -271,7 +271,7 @@ export default function CalculateLengthNesting() {
                     const globalScale = Math.min(MAX_DIM / maxW, MAX_DIM / maxH);
 
                     return (
-                      <div style={{ borderRadius: "10px" }} className="flex flex-wrap gap-4 overflow-auto p-4 bg-muted max-h-[calc(75vh)]">
+                      <div style={{ borderRadius: "10px" }} className="flex flex-wrap gap-4 overflow-auto p-4 bg-muted max-h-[calc(70vh)]">
                         {endResults.layouts.map((layout, i) => {
                           const width = layout.width * globalScale;
                           const height = layout.length * globalScale;
