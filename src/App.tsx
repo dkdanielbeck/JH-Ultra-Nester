@@ -27,7 +27,7 @@ import MySteelLengthElements from "./pages/MySteelLengthElements";
 import CalculateSheetNesting from "@/pages/CalculateSheetNesting";
 import CalculateLengthNesting from "./pages/CalculateLengthNesting";
 import PrivateRoute from "./components/my-components/PrivateRoute";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import SignIn from "./pages/SignIn";
 
