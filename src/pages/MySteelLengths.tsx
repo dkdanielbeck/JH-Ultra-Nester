@@ -148,7 +148,7 @@ export default function MySteelLengths() {
         <div style={{ borderRadius: "10px" }} className="flex-grow overflow-auto p-4 bg-muted max-h-[calc(70vh)]">
           <Table>
             <TableHeader className="top-0 bg-muted z-10">
-              <TableRow>
+              <TableRow className="text-xs sm:text-base">
                 <TableHead onClick={() => handleSort("name")} className="cursor-pointer">
                   {language === "da" ? "Navn" : "Name"}
                 </TableHead>
@@ -169,10 +169,15 @@ export default function MySteelLengths() {
                 const shouldEdit = steelLength.id === beingEdited;
 
                 return (
-                  <TableRow key={steelLength.id}>
+                  <TableRow className="text-xs sm:text-base" key={steelLength.id}>
                     <TableCell>
                       {shouldEdit ? (
-                        <Input className="max-w-40" placeholder={language === "da" ? "Stål længde navn" : "Steel length name"} value={editedName} onChange={(e) => setEditedName(e.target.value)} />
+                        <Input
+                          className="max-w-40 text-xs sm:text-base"
+                          placeholder={language === "da" ? "Stål længde navn" : "Steel length name"}
+                          value={editedName}
+                          onChange={(e) => setEditedName(e.target.value)}
+                        />
                       ) : (
                         steelLength.name
                       )}
@@ -180,7 +185,7 @@ export default function MySteelLengths() {
                     <TableCell>
                       {shouldEdit ? (
                         <Input
-                          className="max-w-40"
+                          className="max-w-40 text-xs sm:text-base"
                           placeholder={language === "da" ? "Længde (mm)" : "Length (mm)"}
                           type="number"
                           value={editedLength}
@@ -193,7 +198,7 @@ export default function MySteelLengths() {
                     <TableCell>
                       {shouldEdit ? (
                         <Input
-                          className="max-w-40"
+                          className="max-w-40 text-xs sm:text-base"
                           placeholder={language === "da" ? "Kilopris" : "Price per kilo"}
                           type="number"
                           value={editedPrice}
@@ -206,7 +211,7 @@ export default function MySteelLengths() {
                     <TableCell>
                       {shouldEdit ? (
                         <Input
-                          className="max-w-40"
+                          className="max-w-40 text-xs sm:text-base"
                           placeholder={language === "da" ? "Vægt (kg)" : "Weight (kg)"}
                           type="number"
                           value={editedWeight}
@@ -218,7 +223,7 @@ export default function MySteelLengths() {
                     </TableCell>
                     <TableCell className="flex justify-end space-x-2">
                       <Button
-                        className="mr-2"
+                        className="mr-2 text-xs sm:text-base"
                         variant="destructive"
                         size="sm"
                         onClick={async () => {
@@ -229,11 +234,12 @@ export default function MySteelLengths() {
                         {language === "da" ? "Slet" : "Remove"}
                       </Button>
                       {shouldEdit ? (
-                        <Button style={{ backgroundColor: "green", color: "white" }} variant="outline" size="sm" onClick={() => SaveEditedSteelLength()}>
+                        <Button style={{ backgroundColor: "green", color: "white" }} variant="outline" className="text-xs sm:text-base" size="sm" onClick={() => SaveEditedSteelLength()}>
                           {language === "da" ? "Gem" : "Save"}
                         </Button>
                       ) : (
                         <Button
+                          className="text-xs sm:text-base"
                           variant="outline"
                           size="sm"
                           onClick={() => {

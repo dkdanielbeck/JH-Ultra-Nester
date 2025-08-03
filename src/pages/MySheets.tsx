@@ -164,7 +164,7 @@ export default function MySheets() {
         <div style={{ borderRadius: "10px" }} className="flex-grow overflow-auto p-4 bg-muted max-h-[calc(70vh)]">
           <Table>
             <TableHeader className="top-0 bg-muted z-10">
-              <TableRow>
+              <TableRow className="text-xs sm:text-base">
                 <TableHead onClick={() => handleSort("name")} className="cursor-pointer">
                   {language === "da" ? "Navn" : "Name"}
                 </TableHead>
@@ -187,10 +187,15 @@ export default function MySheets() {
               {sortedItems.map((sheet) => {
                 const shouldEdit = sheet.id === beingEdited;
                 return (
-                  <TableRow key={sheet.id}>
+                  <TableRow className="text-xs sm:text-base" key={sheet.id}>
                     <TableCell>
                       {shouldEdit ? (
-                        <Input className="max-w-40" placeholder={language === "da" ? "Plade navn" : "Sheet name"} value={editedName} onChange={(e) => setEditedName(e.target.value)} />
+                        <Input
+                          className="max-w-40 text-xs sm:text-base"
+                          placeholder={language === "da" ? "Plade navn" : "Sheet name"}
+                          value={editedName}
+                          onChange={(e) => setEditedName(e.target.value)}
+                        />
                       ) : (
                         sheet.name
                       )}
@@ -198,7 +203,7 @@ export default function MySheets() {
                     <TableCell>
                       {shouldEdit ? (
                         <Input
-                          className="max-w-40"
+                          className="max-w-40 text-xs sm:text-base"
                           placeholder={language === "da" ? "Længde (mm)" : "Length (mm)"}
                           type="number"
                           value={editedLength}
@@ -210,7 +215,13 @@ export default function MySheets() {
                     </TableCell>
                     <TableCell>
                       {shouldEdit ? (
-                        <Input className="max-w-40" placeholder={language === "da" ? "Bredde (mm)" : "Width (mm)"} type="number" value={editedWidth} onChange={(e) => setEditedWidth(e.target.value)} />
+                        <Input
+                          className="max-w-40 text-xs sm:text-base"
+                          placeholder={language === "da" ? "Bredde (mm)" : "Width (mm)"}
+                          type="number"
+                          value={editedWidth}
+                          onChange={(e) => setEditedWidth(e.target.value)}
+                        />
                       ) : (
                         sheet.width
                       )}
@@ -218,7 +229,7 @@ export default function MySheets() {
                     <TableCell>
                       {shouldEdit ? (
                         <Input
-                          className="max-w-40"
+                          className="max-w-40 text-xs sm:text-base"
                           placeholder={language === "da" ? "Kilopris" : "Price per kilo"}
                           type="number"
                           value={editedPrice}
@@ -231,7 +242,7 @@ export default function MySheets() {
                     <TableCell>
                       {shouldEdit ? (
                         <Input
-                          className="max-w-40"
+                          className="max-w-40 text-xs sm:text-base"
                           placeholder={language === "da" ? "Vægt (kg)" : "Weight (kg)"}
                           type="number"
                           value={editedWeight}
@@ -243,7 +254,7 @@ export default function MySheets() {
                     </TableCell>
                     <TableCell className="flex justify-end space-x-2">
                       <Button
-                        className="mr-2"
+                        className="mr-2 text-xs sm:text-base"
                         variant="destructive"
                         size="sm"
                         onClick={async () => {
@@ -254,11 +265,12 @@ export default function MySheets() {
                         {language === "da" ? "Slet" : "Remove"}
                       </Button>
                       {shouldEdit ? (
-                        <Button style={{ backgroundColor: "green", color: "white" }} variant="outline" size="sm" onClick={() => SaveEditedSheet()}>
+                        <Button className="text-xs sm:text-base" style={{ backgroundColor: "green", color: "white" }} variant="outline" size="sm" onClick={() => SaveEditedSheet()}>
                           {language === "da" ? "Gem" : "Save"}
                         </Button>
                       ) : (
                         <Button
+                          className="text-xs sm:text-base"
                           variant="outline"
                           size="sm"
                           onClick={() => {

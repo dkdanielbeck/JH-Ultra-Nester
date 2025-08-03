@@ -131,7 +131,7 @@ export default function MySheetElements() {
         <div style={{ borderRadius: "10px" }} className="flex-grow overflow-auto p-4 bg-muted max-h-[calc(70vh)]">
           <Table>
             <TableHeader className="top-0 bg-muted z-10">
-              <TableRow>
+              <TableRow className="text-xs sm:text-base">
                 <TableHead onClick={() => handleSort("name")} className="cursor-pointer">
                   {language === "da" ? "Navn" : "Name"}
                 </TableHead>
@@ -149,10 +149,15 @@ export default function MySheetElements() {
                 const shouldEdit = sheetElement.id === beingEdited;
 
                 return (
-                  <TableRow key={sheetElement.id}>
+                  <TableRow className="text-xs sm:text-base" key={sheetElement.id}>
                     <TableCell>
                       {shouldEdit ? (
-                        <Input className="max-w-40" placeholder={language === "da" ? "Emne navn" : "Element name"} value={editedName} onChange={(e) => setEditedName(e.target.value)} />
+                        <Input
+                          className="max-w-40 text-xs sm:text-base"
+                          placeholder={language === "da" ? "Emne navn" : "Element name"}
+                          value={editedName}
+                          onChange={(e) => setEditedName(e.target.value)}
+                        />
                       ) : (
                         sheetElement.name
                       )}
@@ -160,7 +165,7 @@ export default function MySheetElements() {
                     <TableCell>
                       {shouldEdit ? (
                         <Input
-                          className="max-w-40"
+                          className="max-w-40 text-xs sm:text-base"
                           placeholder={language === "da" ? "Længde (mm)" : "Length (mm)"}
                           type="number"
                           value={editedLength}
@@ -172,14 +177,20 @@ export default function MySheetElements() {
                     </TableCell>
                     <TableCell>
                       {shouldEdit ? (
-                        <Input className="max-w-40" placeholder={language === "da" ? "Bredde (mm)" : "Width (mm)"} type="number" value={editedWidth} onChange={(e) => setEditedWidth(e.target.value)} />
+                        <Input
+                          className="max-w-40 text-xs sm:text-base"
+                          placeholder={language === "da" ? "Bredde (mm)" : "Width (mm)"}
+                          type="number"
+                          value={editedWidth}
+                          onChange={(e) => setEditedWidth(e.target.value)}
+                        />
                       ) : (
                         sheetElement.width
                       )}
                     </TableCell>
                     <TableCell className="flex justify-end space-x-2">
                       <Button
-                        className="mr-2"
+                        className="mr-2 text-xs sm:text-base"
                         variant="destructive"
                         size="sm"
                         onClick={async () => {
@@ -190,12 +201,13 @@ export default function MySheetElements() {
                         {language === "da" ? "Slet" : "Remove"}
                       </Button>
                       {shouldEdit ? (
-                        <Button style={{ backgroundColor: "green", color: "white" }} variant="outline" size="sm" onClick={() => SaveEditedSheetElement()}>
+                        <Button className="text-xs sm:text-base" style={{ backgroundColor: "green", color: "white" }} variant="outline" size="sm" onClick={() => SaveEditedSheetElement()}>
                           {language === "da" ? "Gem" : "Save"}
                         </Button>
                       ) : (
                         <Button
                           variant="outline"
+                          className="text-xs sm:text-base"
                           size="sm"
                           onClick={() => {
                             setBeingEdited(sheetElement.id);

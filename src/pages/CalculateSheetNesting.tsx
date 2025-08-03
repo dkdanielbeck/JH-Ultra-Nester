@@ -185,11 +185,11 @@ export default function CalculateSheetNesting() {
           )}
         </div>
         {sheets.length !== 0 && sheetElements.length !== 0 && machines.length !== 0 && (
-          <div className="flex w-full">
-            <div className="flex-grow p-4 mb-2 w-1/2" style={{ borderRight: "1px solid var(--border)" }}>
+          <div className="flex w-full flex-col sm:flex-row ">
+            <div className="flex-grow p-4 mb-2 sm:w-1/2 w-full">
               <div className="flex flex-col gap-4 ">
                 {sheets.length !== 0 && machines.length !== 0 && sheetElements.length !== 0 && (
-                  <div className="flex flex-col gap-6 ">
+                  <div className="flex flex-col gap-6 mt-9">
                     <DropdownMenuConsolidated<SheetElement>
                       language={language}
                       items={sheetElements}
@@ -230,7 +230,7 @@ export default function CalculateSheetNesting() {
                   <div style={{ borderRadius: "10px" }} className="flex-grow overflow-auto p-4 bg-muted ">
                     <Table>
                       <TableHeader className="top-0 bg-muted z-10">
-                        <TableRow>
+                        <TableRow className="text-xs sm:text-base">
                           <TableHead className="cursor-pointer">{language === "da" ? "Navn" : "Name"}</TableHead>
                           <TableHead className="cursor-pointer">{language === "da" ? "Længde (mm)" : "Length (mm)"}</TableHead>
 
@@ -243,13 +243,13 @@ export default function CalculateSheetNesting() {
                         {selectedSheetElements.map((selectedSheetElement) => {
                           if (!selectedSheetElement) return null;
                           return (
-                            <TableRow key={selectedSheetElement.id}>
+                            <TableRow className="text-xs sm:text-base" key={selectedSheetElement.id}>
                               <TableCell>{selectedSheetElement.name}</TableCell>
                               <TableCell>{selectedSheetElement.length}</TableCell>
                               <TableCell>{selectedSheetElement.width}</TableCell>
                               <TableCell>
                                 <Input
-                                  className="max-w-40"
+                                  className="max-w-40 text-xs sm:text-base"
                                   placeholder={language === "da" ? "Antal" : "Quantity"}
                                   type="number"
                                   value={quantities[selectedSheetElement.id] ?? 1}
@@ -262,7 +262,7 @@ export default function CalculateSheetNesting() {
                                 />
                               </TableCell>
                               <TableCell className="flex justify-end space-x-2">
-                                <Button disabled={isCalculating} variant="destructive" size="sm" onClick={() => removeElement(selectedSheetElement.id)}>
+                                <Button disabled={isCalculating} variant="destructive" size="sm" className="text-xs sm:text-base" onClick={() => removeElement(selectedSheetElement.id)}>
                                   {language === "da" ? "Slet" : "Remove"}
                                 </Button>
                               </TableCell>
@@ -275,16 +275,18 @@ export default function CalculateSheetNesting() {
                 )}
               </div>
             </div>
-            <div className="flex-grow pl-4 pr-4 w-1/2">
+            <div className="flex-grow pl-4 pr-4 sm:w-1/2 w-full">
               {endResults.nestingParent.length !== 0 && selectedSheetElements.length !== 0 && selectedSheets.length !== 0 && (
-                <div className="p-4">
-                  <h2 className="text-xl font-semibold mb-4">{language === "da" ? "Resultat" : "Result"}</h2>
-                  <ul className="list-disc list-inside space-y-1">{endResults.nestingParent.map((parent, index) => formatResultsLine(parent, index))}</ul>
-                  {getTotalPrice(endResults.nestingParent)}
-                </div>
+                <>
+                  <h2 className="text-xl font-semibold mb-2 pl-4 mt-4">{language === "da" ? "Resultat" : "Result"}</h2>
+                  <div style={{ borderRadius: "10px" }} className="p-4 bg-muted text-xs sm:text-base">
+                    <ul className="list-disc list-inside space-y-1">{endResults.nestingParent.map((parent, index) => formatResultsLine(parent, index))}</ul>
+                    {getTotalPrice(endResults.nestingParent)}
+                  </div>
+                </>
               )}
               <>
-                {endResults.layouts.length > 0 && <h2 className="text-xl font-semibold mb-2 pl-4 mt-4">{language === "da" ? "visualiseret" : "Visualized"}</h2>}
+                {endResults.layouts.length > 0 && <h2 className="text-xl font-semibold mb-2 pl-4 mt-4">{language === "da" ? "Visualiseret" : "Visualized"}</h2>}
 
                 {endResults.layouts.length > 0 &&
                   (() => {
@@ -298,7 +300,7 @@ export default function CalculateSheetNesting() {
                     const globalScale = Math.min(MAX_DIM / maxW, MAX_DIM / maxH);
 
                     return (
-                      <div style={{ borderRadius: "10px" }} className="flex flex-wrap gap-4 overflow-auto p-4 bg-muted max-h-[calc(70vh)]">
+                      <div style={{ borderRadius: "10px" }} className="flex mb-4 flex-wrap gap-4 overflow-auto p-4 bg-muted max-h-[calc(70vh)]">
                         {endResults.layouts.map((layout, i) => {
                           const width = layout.width * globalScale;
                           const height = layout.length * globalScale;

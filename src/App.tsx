@@ -158,6 +158,17 @@ function App() {
                   </SidebarGroupContent>
                 </SidebarGroup>
               ))}
+
+              <Button
+                onClick={async () => {
+                  await supabase.auth.signOut();
+                  window.location.href = "/JH-Ultra-Nester/#/sign-in";
+                }}
+                className="mt-auto ml-4 mr-4 mb-4"
+                variant="outline"
+              >
+                {language === "da" ? "Log ud" : "Sign out"}
+              </Button>
             </SidebarContent>
           </Sidebar>
         )}
@@ -195,18 +206,6 @@ function App() {
             {isAuthenticated && (
               <Button onClick={() => setShowGuideVideo(true)} variant="outline">
                 {language === "da" ? "Se guide video" : "Watch guide video"}
-              </Button>
-            )}
-            {isAuthenticated && (
-              <Button
-                onClick={async () => {
-                  await supabase.auth.signOut();
-                  window.location.href = "/JH-Ultra-Nester/#/sign-in";
-                }}
-                className="ml-auto"
-                variant="ghost"
-              >
-                {language === "da" ? "Log ud" : "Sign out"}
               </Button>
             )}
           </header>

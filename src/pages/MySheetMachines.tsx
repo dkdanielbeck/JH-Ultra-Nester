@@ -180,7 +180,7 @@ export default function MySheetMachines() {
         <div style={{ borderRadius: "10px" }} className="flex-grow overflow-auto p-4 bg-muted max-h-[calc(70vh)]">
           <Table>
             <TableHeader className="top-0 bg-muted z-10">
-              <TableRow>
+              <TableRow className="text-xs sm:text-base">
                 <TableHead onClick={() => handleSort("name")} className="cursor-pointer">
                   {language === "da" ? "Navn" : "Name"}
                 </TableHead>
@@ -200,10 +200,15 @@ export default function MySheetMachines() {
                 const shouldEdit = machine.id === beingEdited;
 
                 return (
-                  <TableRow key={machine.id}>
+                  <TableRow className="text-xs sm:text-base" key={machine.id}>
                     <TableCell>
                       {shouldEdit ? (
-                        <Input className="max-w-40" placeholder={language === "da" ? "Maskine navn" : "Machine name"} value={editedName} onChange={(e) => setEditedName(e.target.value)} />
+                        <Input
+                          className="max-w-40 text-xs sm:text-base"
+                          placeholder={language === "da" ? "Maskine navn" : "Machine name"}
+                          value={editedName}
+                          onChange={(e) => setEditedName(e.target.value)}
+                        />
                       ) : (
                         machine.name
                       )}
@@ -211,7 +216,7 @@ export default function MySheetMachines() {
                     <TableCell>
                       {shouldEdit ? (
                         <Input
-                          className="max-w-40"
+                          className="max-w-40 text-xs sm:text-base"
                           placeholder={language === "da" ? "Margen (mm)" : "Margin (mm)"}
                           type="number"
                           value={editedMargin}
@@ -224,7 +229,7 @@ export default function MySheetMachines() {
                     <TableCell>
                       {shouldEdit ? (
                         <Input
-                          className="max-w-40"
+                          className="max-w-40 text-xs sm:text-base"
                           placeholder={language === "da" ? "Kant (mm)" : "Border (mm)"}
                           type="number"
                           value={editedBorder}
@@ -242,7 +247,7 @@ export default function MySheetMachines() {
                     </TableCell>
                     <TableCell className="flex justify-end space-x-2">
                       <Button
-                        className="mr-2"
+                        className="mr-2 text-xs sm:text-base"
                         variant="destructive"
                         size="sm"
                         onClick={async () => {
@@ -253,12 +258,13 @@ export default function MySheetMachines() {
                         {language === "da" ? "Slet" : "Remove"}
                       </Button>
                       {shouldEdit ? (
-                        <Button style={{ backgroundColor: "green", color: "white" }} variant="outline" size="sm" onClick={() => SaveEditedMachine()}>
+                        <Button style={{ backgroundColor: "green", color: "white" }} className="text-xs sm:text-base" variant="outline" size="sm" onClick={() => SaveEditedMachine()}>
                           {language === "da" ? "Gem" : "Save"}
                         </Button>
                       ) : (
                         <Button
                           variant="outline"
+                          className="text-xs sm:text-base"
                           size="sm"
                           onClick={() => {
                             setBeingEdited(machine.id);
