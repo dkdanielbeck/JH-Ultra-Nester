@@ -53,13 +53,13 @@
   --primary-foreground: oklch(0.984 0.003 247.858);
   --secondary: oklch(0.968 0.007 247.896);
   --secondary-foreground: oklch(0.208 0.042 265.755);
-  --muted: oklch(0.968 0.007 247.896);
+  --muted: oklch(85.261% 0.0265 253.657);
   --muted-foreground: oklch(0.554 0.046 257.417);
-  --accent: oklch(0.968 0.007 247.896);
+  --accent: oklch(85.261% 0.0265 253.657);
   --accent-foreground: oklch(0.208 0.042 265.755);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.929 0.013 255.508);
-  --input: oklch(0.929 0.013 255.508);
+  --border: oklch(81.147% 0.01196 252.26);
+  --input: oklch(81.147% 0.01196 252.26);
   --ring: oklch(0.704 0.04 256.788);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
@@ -149,4 +149,9 @@ button {
 .checkbox {
   cursor: pointer;
   border: solid black 1px;
+}
+
+input {
+  background-color: white;
+  color: oklch(0.129 0.042 264.695);
 }
