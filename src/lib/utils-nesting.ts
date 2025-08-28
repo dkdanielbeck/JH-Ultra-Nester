@@ -1,12 +1,29 @@
-import type { Sheet, SheetElement, Machine, DPResult, PlacedRect, SteelLengthElement, SteelLength } from "./types";
+import type {
+  Sheet,
+  SheetElement,
+  Machine,
+  DPResult,
+  PlacedRect,
+  SteelLengthElement,
+  SteelLength,
+} from "./types";
 import type { Rectangle } from "maxrects-packer";
 import { MaxRectsPacker, PACKING_LOGIC } from "maxrects-packer";
+import { formatEuropeanFloat } from "./utils";
 
-export function packOneSheet(parent: Sheet | SteelLength, elements: SheetElement[] | SteelLengthElement[], selectedProfile: Machine | undefined): MaxRectsPacker<Rectangle> {
+export function packOneSheet(
+  parent: Sheet | SteelLength,
+  elements: SheetElement[] | SteelLengthElement[],
+  selectedProfile: Machine | undefined
+): MaxRectsPacker<Rectangle> {
   const width = parent.width;
   const length = parent.length;
 
-  const canFit = elements.filter((element) => (element.width <= width && element.length <= length) || (element.length <= width && element.width <= length));
+  const canFit = elements.filter(
+    (element) =>
+      (element.width <= width && element.length <= length) ||
+      (element.length <= width && element.width <= length)
+  );
   if (canFit.length === 0) {
     //@ts-ignore
     return {};
@@ -14,14 +31,19 @@ export function packOneSheet(parent: Sheet | SteelLength, elements: SheetElement
   if (selectedProfile?.straightCuts) {
     return nestWithStraightCuts(parent, canFit, selectedProfile);
   }
-  const packer = new MaxRectsPacker(width, length, selectedProfile ? selectedProfile.margin : 10, {
-    smart: true,
-    pot: false,
-    square: false,
-    allowRotation: true,
-    logic: PACKING_LOGIC.MAX_AREA,
-    border: selectedProfile ? selectedProfile.border : 10,
-  });
+  const packer = new MaxRectsPacker(
+    width,
+    length,
+    selectedProfile ? selectedProfile.margin : 10,
+    {
+      smart: true,
+      pot: false,
+      square: false,
+      allowRotation: true,
+      logic: PACKING_LOGIC.MAX_AREA,
+      border: selectedProfile ? selectedProfile.border : 10,
+    }
+  );
   packer.addArray(
     canFit.map((sheetElement) => ({
       width: sheetElement.width,
@@ -54,14 +76,24 @@ export function findBest(
 
   let best: DPResult = { totalArea: Infinity, counts: {}, layouts: [] };
 
-  for (const parent of [...selectedParents].sort((a, b) => b.width * b.length - a.width * a.length)) {
-    if (!elements.some((element) => (element.width <= parent.width && element.length <= parent.length) || (element.length <= parent.width && element.width <= parent.length))) {
+  for (const parent of [...selectedParents].sort(
+    (a, b) => b.width * b.length - a.width * a.length
+  )) {
+    if (
+      !elements.some(
+        (element) =>
+          (element.width <= parent.width && element.length <= parent.length) ||
+          (element.length <= parent.width && element.width <= parent.length)
+      )
+    ) {
       continue;
     }
 
     const packer = packOneSheet(parent, elements, selectedProfile);
 
-    const placedSheetElements = packer.bins[0].rects.map((rectangle) => rectangle.data as SheetElement);
+    const placedSheetElements = packer.bins[0].rects.map(
+      (rectangle) => rectangle.data as SheetElement
+    );
 
     const bin = packer.bins[0];
     const thisLayout: PlacedRect[] = bin.rects.map((rect) => {
@@ -80,7 +112,9 @@ export function findBest(
 
     const remaining = elements.slice();
     for (const placedSheetElement of placedSheetElements) {
-      const idx = remaining.findIndex((element) => element.id === placedSheetElement.id);
+      const idx = remaining.findIndex(
+        (element) => element.id === placedSheetElement.id
+      );
       remaining.splice(idx, 1);
     }
 
@@ -88,7 +122,13 @@ export function findBest(
     if (parentArea >= bestSoFar) continue;
 
     // recurse
-    const bestFound = findBest(remaining, selectedParents, selectedProfile, memory, bestSoFar - parentArea);
+    const bestFound = findBest(
+      remaining,
+      selectedParents,
+      selectedProfile,
+      memory,
+      bestSoFar - parentArea
+    );
 
     const total = parentArea + bestFound.totalArea;
     if (total < best.totalArea) {
@@ -102,7 +142,9 @@ export function findBest(
           {
             parentId: parent.id,
             parentName: parent.name,
-            parentSize: `${parent.length}×${parent.width}`,
+            parentSize: `${formatEuropeanFloat(
+              parent.length
+            )}×${formatEuropeanFloat(parent.width)}`,
             parentArea: parentArea,
             width: parent.width,
             length: parent.length,
@@ -119,7 +161,11 @@ export function findBest(
   return best;
 }
 
-export function nestWithStraightCuts(parent: Sheet | SteelLength, elements: (SheetElement | SteelLengthElement)[], profile: Machine): MaxRectsPacker<Rectangle> {
+export function nestWithStraightCuts(
+  parent: Sheet | SteelLength,
+  elements: (SheetElement | SteelLengthElement)[],
+  profile: Machine
+): MaxRectsPacker<Rectangle> {
   const width = parent.width - 2 * profile.border;
   const height = parent.length - 2 * profile.border;
   const margin = profile.margin;

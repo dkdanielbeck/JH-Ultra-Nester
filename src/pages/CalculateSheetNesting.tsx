@@ -24,7 +24,11 @@ import {
   saveNestingConfigurationToLocalStorage,
 } from "@/lib/utils-local-storage";
 import { findBest } from "@/lib/utils-nesting";
-import { formatResultsLine, getTotalPrice } from "@/lib/utils";
+import {
+  formatEuropeanFloat,
+  formatResultsLine,
+  getTotalPrice,
+} from "@/lib/utils";
 import EmptyStateLine from "@/components/my-components/EmptyStateLine";
 import DropdownMenuConsolidated from "@/components/my-components/DropdownMenuConsolidated";
 import { fetchSheets } from "@/lib/database calls/sheets";
@@ -56,19 +60,10 @@ export default function CalculateSheetNesting() {
   const [loading, setIsLoading] = useState<boolean>(false);
 
   const [selectedSheetElements, setSelectedElements] = useState<SheetElement[]>(
-    (savedConfig?.selectedElements as SheetElement[]) || []
+    []
   );
-  const [selectedSheets, setSelectedSheets] = useState<Sheet[]>(
-    (savedConfig?.selectedParents as Sheet[]) || sheets
-  );
-  const [selectedProfile, setSelectedProfile] = useState<Machine | undefined>(
-    () => {
-      if (savedConfig?.selectedProfileId) {
-        return machines.find((m) => m.id === savedConfig.selectedProfileId);
-      }
-      return machines.find((m) => m.default);
-    }
-  );
+  const [selectedSheets, setSelectedSheets] = useState<Sheet[]>([]);
+  const [selectedProfile, setSelectedProfile] = useState<Machine | undefined>();
 
   useEffect(() => {
     saveNestingConfigurationToLocalStorage(
@@ -99,6 +94,16 @@ export default function CalculateSheetNesting() {
         setSheets(sheets);
         setMachines(machines);
         setSheetElements(sheetElements);
+        setSelectedSheets((savedConfig?.selectedParents as Sheet[]) ?? sheets);
+        setSelectedElements(
+          (savedConfig?.selectedElements as SheetElement[]) ?? []
+        );
+        setSelectedProfile(() => {
+          if (savedConfig?.selectedProfileId) {
+            return machines.find((m) => m.id === savedConfig.selectedProfileId);
+          }
+          return machines.find((m) => m.default);
+        });
       } catch (err) {
         console.error("Failed to fetch items:", err);
       } finally {
@@ -178,7 +183,9 @@ export default function CalculateSheetNesting() {
           price: sheet?.price ?? 0,
           weight: sheet?.weight ?? 0,
           name: sheet.name,
-          size: `${sheet.length}×${sheet.width}`,
+          size: `${formatEuropeanFloat(sheet.length)}×${formatEuropeanFloat(
+            sheet.width
+          )}`,
           count: best.counts[sheet.id] || 0,
           area: sheet.width * sheet.length,
         }))
@@ -379,10 +386,14 @@ export default function CalculateSheetNesting() {
                                   {selectedSheetElement.name}
                                 </TableCell>
                                 <TableCell>
-                                  {selectedSheetElement.length}
+                                  {formatEuropeanFloat(
+                                    selectedSheetElement.length
+                                  )}
                                 </TableCell>
                                 <TableCell>
-                                  {selectedSheetElement.width}
+                                  {formatEuropeanFloat(
+                                    selectedSheetElement.width
+                                  )}
                                 </TableCell>
                                 <TableCell>
                                   <Input
@@ -475,7 +486,7 @@ export default function CalculateSheetNesting() {
                       return (
                         <div
                           style={{ borderRadius: "10px" }}
-                          className="flex mb-4 flex-wrap gap-4 overflow-auto p-4 bg-muted max-h-[calc(70vh)]"
+                          className="flex mb-4 flex-wrap gap-4 overflow-auto p-4 bg-muted max-h-[calc(68vh)]"
                         >
                           {endResults.layouts.map((layout, i) => {
                             const width = layout.width * globalScale;
