@@ -6,57 +6,106 @@ import type {
   PlacedRect,
   SteelLengthElement,
   SteelLength,
+  ParentLayout,
 } from "./types";
 import type { Rectangle } from "maxrects-packer";
 import { MaxRectsPacker, PACKING_LOGIC } from "maxrects-packer";
 import { formatEuropeanFloat } from "./utils";
 
+type AnyElement = SheetElement | SteelLengthElement;
+
 export function packOneSheet(
   parent: Sheet | SteelLength,
-  elements: SheetElement[] | SteelLengthElement[],
+  elements: AnyElement[],
   selectedProfile: Machine | undefined
 ): MaxRectsPacker<Rectangle> {
-  const width = parent.width;
-  const length = parent.length;
+  const border = selectedProfile?.border ?? 0;
+  const margin = selectedProfile?.margin ?? 0;
 
-  const canFit = elements.filter(
-    (element) =>
-      (element.width <= width && element.length <= length) ||
-      (element.length <= width && element.width <= length)
+  const usableW = parent.width - 2 * border;
+  const usableH = parent.length - 2 * border;
+
+  // Only keep pieces that can possibly fit once inside border
+  const pool = elements.filter(
+    (el) =>
+      (el.width <= usableW && el.length <= usableH) ||
+      (el.length <= usableW && el.width <= usableH)
   );
-  if (canFit.length === 0) {
-    //@ts-ignore
-    return {};
+  if (pool.length === 0) {
+    // @ts-ignore
+    return { bins: [] };
   }
-  if (selectedProfile?.straightCuts) {
-    return nestWithStraightCuts(parent, canFit, selectedProfile);
-  }
-  const packer = new MaxRectsPacker(
-    width,
-    length,
-    selectedProfile ? selectedProfile.margin : 10,
-    {
+
+  // A few robust orderings; different ones often reduce bin count dramatically
+  const orderings: ((a: AnyElement, b: AnyElement) => number)[] = [
+    // Largest area first
+    (a, b) => b.width * b.length - a.width * a.length,
+    // Decreasing longest side
+    (a, b) =>
+      Math.max(b.width, b.length) - Math.max(a.width, a.length) ||
+      Math.min(b.width, b.length) - Math.min(a.width, a.length),
+    // Decreasing width
+    (a, b) => b.width - a.width || b.length - a.length,
+    // Decreasing length
+    (a, b) => b.length - a.length || b.width - a.width,
+    // Perimeter
+    (a, b) => b.width + b.length - (a.width + a.length),
+  ];
+
+  type Candidate = { packer: MaxRectsPacker<Rectangle>; waste: number };
+
+  let best: Candidate | null = null;
+
+  for (const cmp of orderings) {
+    const sorted = [...pool].sort(cmp);
+
+    const packer = new MaxRectsPacker(parent.width, parent.length, margin, {
       smart: true,
       pot: false,
       square: false,
       allowRotation: true,
-      logic: PACKING_LOGIC.MAX_AREA,
-      border: selectedProfile ? selectedProfile.border : 10,
-    }
-  );
-  packer.addArray(
-    canFit.map((sheetElement) => ({
-      width: sheetElement.width,
-      height: sheetElement.length,
-      data: sheetElement,
-    })) as unknown as Rectangle[]
-  );
+      logic: PACKING_LOGIC.MAX_AREA, // this is ignored when smart=true; it will test several
+      border,
+    });
 
-  return packer;
+    packer.addArray(
+      sorted.map((el) => ({
+        width: el.width,
+        height: el.length,
+        data: el,
+      })) as unknown as Rectangle[]
+    );
+
+    // Score: (bin count) then total unused area
+    const binCount = packer.bins.length;
+    const totalArea = parent.width * parent.length * binCount;
+    const usedArea = packer.bins.reduce(
+      (s, b) => s + b.rects.reduce((t, r) => t + r.width * r.height, 0),
+      0
+    );
+    const waste = totalArea - usedArea;
+
+    if (
+      best === null ||
+      packer.bins.length < best.packer.bins.length ||
+      (packer.bins.length === best.packer.bins.length && waste < best.waste)
+    ) {
+      best = { packer, waste };
+      // Early exit if we already hit the theoretical lower bound: 1 or 2 bins
+      if (packer.bins.length <= 2) break;
+    }
+  }
+
+  return best!.packer;
 }
 
+/**
+ * Dynamic programming over sheet choices.
+ * IMPORTANT: For each sheet size we now branch over taking k=1..bins.length
+ * bins from a **single pack** (so we keep the packer’s cross-bin decisions).
+ */
 export function findBest(
-  elements: SheetElement[] | SteelLengthElement[],
+  elements: AnyElement[],
   selectedParents: Sheet[] | SteelLength[],
   selectedProfile: Machine | undefined,
   memory = new Map<string, DPResult>(),
@@ -66,175 +115,213 @@ export function findBest(
     return { totalArea: 0, counts: {}, layouts: [] };
   }
 
-  const key = elements
-    .map((element) => element.id)
+  const memoKey = elements
+    .map((el: any) => el.instanceId ?? el.id)
     .sort()
     .join("|");
-  if (memory.has(key)) {
-    return memory.get(key)!;
-  }
+  const cached = memory.get(memoKey);
+  if (cached) return cached;
 
   let best: DPResult = { totalArea: Infinity, counts: {}, layouts: [] };
 
-  for (const parent of [...selectedParents].sort(
+  // Try sheet sizes largest first (helps pruning)
+  const parentsByArea = [...selectedParents].sort(
     (a, b) => b.width * b.length - a.width * a.length
-  )) {
+  );
+
+  for (const parent of parentsByArea) {
+    // If nothing can fit at all, skip this parent
     if (
       !elements.some(
-        (element) =>
-          (element.width <= parent.width && element.length <= parent.length) ||
-          (element.length <= parent.width && element.width <= parent.length)
+        (el) =>
+          (el.width <= parent.width && el.length <= parent.length) ||
+          (el.length <= parent.width && el.width <= parent.length)
       )
     ) {
       continue;
     }
 
     const packer = packOneSheet(parent, elements, selectedProfile);
-
-    const placedSheetElements = packer.bins[0].rects.map(
-      (rectangle) => rectangle.data as SheetElement
-    );
-
-    const bin = packer.bins[0];
-    const thisLayout: PlacedRect[] = bin.rects.map((rect) => {
-      const el = rect.data as SheetElement;
-      return {
-        element: el,
-        x: rect.x,
-        y: rect.y,
-        width: rect.width,
-        length: rect.height,
-        rotated: rect.rot,
-      };
-    });
-
-    if (placedSheetElements.length === 0) continue;
-
-    const remaining = elements.slice();
-    for (const placedSheetElement of placedSheetElements) {
-      const idx = remaining.findIndex(
-        (element) => element.id === placedSheetElement.id
-      );
-      remaining.splice(idx, 1);
-    }
+    const bins = packer.bins ?? [];
+    if (bins.length === 0) continue;
 
     const parentArea = parent.width * parent.length;
-    if (parentArea >= bestSoFar) continue;
 
-    // recurse
-    const bestFound = findBest(
-      remaining,
-      selectedParents,
-      selectedProfile,
-      memory,
-      bestSoFar - parentArea
-    );
+    // Take the first k bins from this single run to preserve global choices
+    for (
+      let numberOfBinsToTake = 1;
+      numberOfBinsToTake <= bins.length;
+      numberOfBinsToTake++
+    ) {
+      const areaCost = numberOfBinsToTake * parentArea;
+      if (areaCost >= bestSoFar) break; // pruning
 
-    const total = parentArea + bestFound.totalArea;
-    if (total < best.totalArea) {
-      best = {
-        totalArea: total,
-        counts: {
-          ...bestFound.counts,
-          [parent.id]: (bestFound.counts[parent.id] || 0) + 1,
-        },
-        layouts: [
-          {
+      // Rectangles placed in the first k bins
+      const placedNow = new Set<string>(); // instance-aware via reference fallback to id
+      const layoutsNow: ParentLayout[] = [];
+
+      for (let b = 0; b < numberOfBinsToTake; b++) {
+        const bin = bins[b];
+        const rects = bin.rects || [];
+
+        const thisLayoutRects: PlacedRect[] = rects.map((r) => {
+          const el = r.data as SheetElement;
+          // Mark as placed (object identity if present, else by id)
+          placedNow.add((el as any).instanceId ?? el.id);
+
+          return {
+            element: el,
+            x: r.x,
+            y: r.y,
+            width: r.width,
+            length: r.height,
+            rotated: !!r.rot,
+          };
+        });
+
+        if (thisLayoutRects.length > 0) {
+          layoutsNow.push({
             parentId: parent.id,
             parentName: parent.name,
             parentSize: `${formatEuropeanFloat(
               parent.length
             )}×${formatEuropeanFloat(parent.width)}`,
-            parentArea: parentArea,
+            parentArea,
             width: parent.width,
             length: parent.length,
-            rectangles: thisLayout,
+            rectangles: thisLayoutRects,
+          });
+        }
+      }
+
+      // Build remaining list (respect possible duplicate ids via instanceId)
+      const remaining: AnyElement[] = [];
+      for (const element of elements as AnyElement[]) {
+        const instanceOrId = (element as any).instanceId ?? element.id;
+        if (!placedNow.has(instanceOrId)) remaining.push(element);
+      }
+
+      const bestFound = findBest(
+        remaining,
+        selectedParents,
+        selectedProfile,
+        memory,
+        bestSoFar - areaCost
+      );
+
+      const totalArea = areaCost + bestFound.totalArea;
+      if (totalArea < best.totalArea) {
+        best = {
+          totalArea,
+          counts: {
+            ...bestFound.counts,
+            [parent.id]:
+              (bestFound.counts[parent.id] || 0) + numberOfBinsToTake,
           },
-          ...bestFound.layouts,
-        ],
-      };
-      bestSoFar = total;
+          layouts: [...layoutsNow, ...bestFound.layouts],
+        };
+        bestSoFar = totalArea;
+      }
     }
   }
 
-  memory.set(key, best);
+  memory.set(memoKey, best);
   return best;
 }
 
+/** Straight-cuts: pack in rows/columns; now emits **multiple bins** */
 export function nestWithStraightCuts(
   parent: Sheet | SteelLength,
-  elements: (SheetElement | SteelLengthElement)[],
+  elements: AnyElement[],
   profile: Machine
 ): MaxRectsPacker<Rectangle> {
-  const width = parent.width - 2 * profile.border;
-  const height = parent.length - 2 * profile.border;
+  const usableWidth = parent.width - 2 * profile.border;
+  const usableHeight = parent.length - 2 * profile.border;
   const margin = profile.margin;
 
-  const bins: PlacedRect[] = [];
-  let currentY = profile.border;
+  // Work on a mutable pool so we can create multiple bins
+  const remaining: AnyElement[] = [...(elements as AnyElement[])];
+  const binsOut: {
+    rects: Array<{
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      rot: boolean;
+      data: SheetElement | SteelLengthElement;
+    }>;
+    width: number;
+    height: number;
+  }[] = [];
 
-  // Group sheetElement by size and sort largest first
-  const grouped = new Map<string, SheetElement[] | SteelLengthElement[]>();
-  for (const element of elements) {
-    const elementKey = `${element.width}x${element.length}`;
-    if (!grouped.has(elementKey)) grouped.set(elementKey, []);
-    //@ts-ignore
-    grouped.get(elementKey)!.push(element);
-  }
+  while (remaining.length > 0) {
+    const rectsThisBin: PlacedRect[] = [];
+    let currentY = profile.border;
 
-  const sortedGroups = Array.from(grouped.entries()).sort((a, b) => {
-    const [width1, height1] = a[0].split("x").map(Number);
-    const [width2, height2] = b[0].split("x").map(Number);
-    return height2 * width2 - height1 * width1; // Sort by area
-  });
+    // Group by (w×h), largest area groups first – helps row packing
+    const grouped = new Map<string, AnyElement[]>();
+    for (const el of remaining) {
+      const key = `${el.width}x${el.length}`;
+      if (!grouped.has(key)) grouped.set(key, []);
+      grouped.get(key)!.push(el);
+    }
+    const sortedGroups = Array.from(grouped.entries()).sort((a, b) => {
+      const [w1, h1] = a[0].split("x").map(Number);
+      const [w2, h2] = b[0].split("x").map(Number);
+      return w2 * h2 - w1 * h1;
+    });
 
-  for (const [key, group] of sortedGroups) {
-    const [elementWidth, elementHeight] = key.split("x").map(Number);
-    let currentX = profile.border;
-    let rowMaxHeight = 0;
+    for (const [key, group] of sortedGroups) {
+      const [elementWidth, elementHeight] = key.split("x").map(Number);
+      let currentX = profile.border;
+      let rowMaxHeight = 0;
 
-    for (const element of group) {
-      // Row overflow → move to next line
-      if (currentX + elementWidth > width + profile.border) {
-        currentX = profile.border;
-        currentY += rowMaxHeight + margin;
-        rowMaxHeight = 0;
+      for (const el of group) {
+        if (currentX + elementWidth > usableWidth + profile.border) {
+          // next row
+          currentX = profile.border;
+          currentY += rowMaxHeight + margin;
+          rowMaxHeight = 0;
+        }
+        if (currentY + elementHeight > usableHeight + profile.border) break;
+
+        rectsThisBin.push({
+          element: el,
+          x: currentX,
+          y: currentY,
+          width: elementWidth,
+          length: elementHeight,
+          rotated: false,
+        });
+
+        // consume this element
+        const idx = remaining.indexOf(el);
+        if (idx !== -1) remaining.splice(idx, 1);
+
+        currentX += elementWidth + margin;
+        rowMaxHeight = Math.max(rowMaxHeight, elementHeight);
       }
 
-      // Sheet overflow → stop placing
-      if (currentY + elementHeight > height + profile.border) break;
-
-      bins.push({
-        element: element,
-        x: currentX,
-        y: currentY,
-        width: elementWidth,
-        length: elementHeight,
-        rotated: false,
-      });
-
-      currentX += elementWidth + margin;
-      rowMaxHeight = Math.max(rowMaxHeight, elementHeight);
+      currentY += rowMaxHeight + margin;
+      if (currentY > usableHeight + profile.border) break;
     }
 
-    currentY += rowMaxHeight + margin;
-    if (currentY > height + profile.border) break;
+    binsOut.push({
+      rects: rectsThisBin.map((r) => ({
+        x: r.x,
+        y: r.y,
+        width: r.width,
+        height: r.length,
+        rot: r.rotated,
+        data: r.element,
+      })),
+      width: parent.width,
+      height: parent.length,
+    });
+
+    // Safety: if we didn’t place anything, abort to avoid infinite loop
+    if (rectsThisBin.length === 0) break;
   }
 
-  return {
-    bins: [
-      {
-        rects: bins.map((reactangle) => ({
-          x: reactangle.x,
-          y: reactangle.y,
-          width: reactangle.width,
-          height: reactangle.length,
-          rot: reactangle.rotated,
-          data: reactangle.element,
-        })),
-        width: parent.width,
-        height: parent.length,
-      },
-    ],
-  } as unknown as MaxRectsPacker<Rectangle>;
+  return { bins: binsOut } as unknown as MaxRectsPacker<Rectangle>;
 }
