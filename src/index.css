@@ -53,7 +53,7 @@
   --primary-foreground: oklch(0.984 0.003 247.858);
   --secondary: oklch(0.968 0.007 247.896);
   --secondary-foreground: oklch(0.208 0.042 265.755);
-  --muted: oklch(88.859% 0.01752 256.378);
+  --muted: oklch(91.01% 0.01451 254.734);
   --muted-foreground: oklch(0.554 0.046 257.417);
   --accent: oklch(88.859% 0.01752 256.378);
   --accent-foreground: oklch(0.208 0.042 265.755);
@@ -154,4 +154,24 @@ button {
 input {
   background-color: white;
   color: oklch(0.129 0.042 264.695);
+}
+
+.tooltip-button:hover {
+  outline: none;
+  border: 1px solid oklch(0.704 0.04 256.788);
+  box-shadow: 0 0 0 3px #c7d0dc;
+  background-color: white;
+}
+
+.tooltip-button[data-tooltip-variant="destructive"]:hover {
+  outline: none;
+  border: 1px solid oklch(0.704 0.04 256.788);
+  box-shadow: 0 0 0 3px #c7d0dc;
+  background-color: oklch(0.577 0.245 27.325) !important;
+}
+.tooltip-button[data-tooltip-variant="default"]:hover {
+  outline: none;
+  border: 1px solid oklch(0.704 0.04 256.788);
+  box-shadow: 0 0 0 3px #c7d0dc;
+  background-color: #0f172b !important;
 }

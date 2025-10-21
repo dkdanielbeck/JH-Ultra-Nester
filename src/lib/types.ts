@@ -116,7 +116,15 @@ export interface NestingParent {
   price: number;
 }
 
-export type InputField = "name" | "width" | "length" | "margin" | "border" | "weight" | "price" | "email";
+export type InputField =
+  | "name"
+  | "width"
+  | "length"
+  | "margin"
+  | "border"
+  | "weight"
+  | "price"
+  | "email";
 
 export const InputFieldValues: Record<InputField, InputField> = {
   name: "name",
@@ -125,11 +133,19 @@ export const InputFieldValues: Record<InputField, InputField> = {
   length: "length",
   margin: "margin",
   border: "border",
-  weight: "border",
-  price: "border",
+  weight: "weight",
+  price: "price",
 };
 
-export type ComponentName = "mySheetElements" | "mySheets" | "mySteelLengths" | "mySteelLengthElements" | "myMachines" | "calculateSheetNesting" | "calculateLengthNesting" | "signIn";
+export type ComponentName =
+  | "mySheetElements"
+  | "mySheets"
+  | "mySteelLengths"
+  | "mySteelLengthElements"
+  | "myMachines"
+  | "calculateSheetNesting"
+  | "calculateLengthNesting"
+  | "signIn";
 
 export const ComponentNames: Record<ComponentName, ComponentName> = {
   mySheetElements: "mySheetElements",
@@ -148,6 +164,17 @@ export interface SavedNestingConfiguration {
   selectedProfileId: string | undefined;
   quantities: Record<string, number>;
   endResults: NestingResults;
+  lengthTypeAssociations?: LengthTypeAssociations[];
 }
 
-export type ItemType = Sheet | SheetElement | SteelLength | SteelLengthElement | Machine;
+export interface LengthTypeAssociations {
+  parentId: string;
+  childId: string;
+}
+
+export type ItemType =
+  | Sheet
+  | SheetElement
+  | SteelLength
+  | SteelLengthElement
+  | Machine;

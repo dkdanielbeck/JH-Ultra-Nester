@@ -10,13 +10,14 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
-import { Loader2Icon } from "lucide-react";
+import { Eraser, Loader2Icon, Trash } from "lucide-react";
 import {
   type SteelLength,
   type SteelLengthElement,
   type NestingResults,
   ComponentNames,
   ITEMTYPES,
+  type LengthTypeAssociations,
 } from "@/lib/types";
 import {
   loadNestingConfigurationFromLocalStorage,
@@ -24,14 +25,19 @@ import {
 } from "@/lib/utils-local-storage";
 import { findBest } from "@/lib/utils-nesting";
 import EmptyStateLine from "@/components/my-components/EmptyStateLine";
-import {
-  formatEuropeanFloat,
-  formatResultsLine,
-  getTotalPrice,
-} from "@/lib/utils";
+import { formatEuropeanFloat } from "@/lib/utils";
 import DropdownMenuConsolidated from "@/components/my-components/DropdownMenuConsolidated";
 import { fetchSteelLengthElements } from "@/lib/database calls/steelLengthElements";
 import { fetchSteelLengths } from "@/lib/database calls/steelLengths";
+import TooltipButton from "@/components/my-components/TooltipButton";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import VisualisationCard from "@/components/my-components/VisualisationCard";
+import ResultsCard from "@/components/my-components/ResultsCard";
 
 export default function CalculateLengthNesting() {
   const savedConfig = loadNestingConfigurationFromLocalStorage(
@@ -62,6 +68,8 @@ export default function CalculateLengthNesting() {
   const [selectedSteelLengths, setSelectedSteelLengths] = useState<
     SteelLength[]
   >([]);
+  const [selectedLengthTypeAssociations, setSelectedLengthTypeAssociations] =
+    useState<LengthTypeAssociations[]>([]);
 
   useEffect(() => {
     saveNestingConfigurationToLocalStorage(
@@ -71,12 +79,14 @@ export default function CalculateLengthNesting() {
         selectedProfileId: "",
         quantities,
         endResults,
+        lengthTypeAssociations: selectedLengthTypeAssociations,
       },
       ComponentNames.calculateLengthNesting
     );
   }, [
     selectedSteelLengthElements,
     selectedSteelLengths,
+    selectedLengthTypeAssociations,
     quantities,
     endResults,
   ]);
@@ -94,6 +104,10 @@ export default function CalculateLengthNesting() {
         );
         setSelectedSteelLengthElements(
           (savedConfig?.selectedElements as SteelLengthElement[]) ?? []
+        );
+        setSelectedLengthTypeAssociations(
+          (savedConfig?.lengthTypeAssociations as LengthTypeAssociations[]) ??
+            []
         );
       } catch (err) {
         console.error("Failed to fetch items:", err);
@@ -220,6 +234,7 @@ export default function CalculateLengthNesting() {
     setQuantities({});
     setSelectedSteelLengthElements([]);
     setSelectedSteelLengths(steelLengths);
+    setSelectedLengthTypeAssociations([]);
   };
   return (
     <div className="flex max-h-[calc(100vh-100px)]">
@@ -237,7 +252,7 @@ export default function CalculateLengthNesting() {
           </p>
           {(steelLengths.length === 0 || steelLengthElements.length === 0) &&
             !loading && (
-              <div className="flex flex-col gap-4  mt-8">
+              <div className="flex flex-col gap-4 mt-8">
                 {steelLengthElements.length === 0 && (
                   <EmptyStateLine
                     language={language}
@@ -283,8 +298,21 @@ export default function CalculateLengthNesting() {
                       {steelLengths.length !== 0 &&
                         steelLengthElements.length !== 0 && (
                           <div className="w-full flex justify-between">
+                            <TooltipButton
+                              disabled={
+                                calculating ||
+                                (selectedSteelLengths?.length === 0 &&
+                                  selectedSteelLengthElements?.length === 0)
+                              }
+                              ButtonIcon={Eraser}
+                              text={language === "da" ? "Ryd" : "Clear"}
+                              variant="ghost"
+                              onClick={clearSelections}
+                            />
+
                             <Button
-                              className="w-[48%]"
+                              className="w-[92%] tooltip-button"
+                              data-tooltip-variant={"default"}
                               disabled={
                                 calculating ||
                                 selectedSteelLengths?.length === 0 ||
@@ -300,18 +328,6 @@ export default function CalculateLengthNesting() {
                                 "Calculate nesting"
                               )}
                             </Button>
-                            <Button
-                              className="w-[48%]"
-                              disabled={
-                                calculating ||
-                                (selectedSteelLengths?.length === 0 &&
-                                  selectedSteelLengthElements?.length === 0)
-                              }
-                              variant="ghost"
-                              onClick={clearSelections}
-                            >
-                              {language === "da" ? "Ryd" : "Clear"}
-                            </Button>
                           </div>
                         )}
                     </div>
@@ -325,15 +341,18 @@ export default function CalculateLengthNesting() {
                     <Table>
                       <TableHeader className="top-0 bg-muted z-10">
                         <TableRow className="text-xs sm:text-base">
-                          <TableHead className="cursor-pointer">
+                          <TableHead>
                             {language === "da" ? "Navn" : "Name"}
                           </TableHead>
-                          <TableHead className="cursor-pointer">
+                          <TableHead>
                             {language === "da" ? "Længde (mm)" : "Length (mm)"}
                           </TableHead>
 
                           <TableHead>
                             {language === "da" ? "Antal" : "Quantity"}
+                          </TableHead>
+                          <TableHead>
+                            {language === "da" ? "Længde type" : "Length type"}
                           </TableHead>
                           <TableHead></TableHead>
                         </TableRow>
@@ -357,7 +376,7 @@ export default function CalculateLengthNesting() {
                                 </TableCell>
                                 <TableCell>
                                   <Input
-                                    className="max-w-40 text-xs sm:text-base"
+                                    className="max-w-20 text-xs sm:text-base"
                                     placeholder={
                                       language === "da" ? "Antal" : "Quantity"
                                     }
@@ -376,20 +395,85 @@ export default function CalculateLengthNesting() {
                                     }
                                   />
                                 </TableCell>
+                                <TableCell>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button
+                                        variant="outline"
+                                        className="tooltip-button"
+                                      >
+                                        {language === "da"
+                                          ? "Vælg længde type"
+                                          : "Select length type"}
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent>
+                                      {selectedSteelLengths.map(
+                                        (steelLength) => {
+                                          const checked =
+                                            selectedLengthTypeAssociations.some(
+                                              (lengthTypeAssociation) =>
+                                                lengthTypeAssociation.childId ===
+                                                  selectedSteelLengthElement.id &&
+                                                lengthTypeAssociation.parentId ===
+                                                  steelLength.id
+                                            );
+
+                                          return (
+                                            <DropdownMenuCheckboxItem
+                                              key={
+                                                steelLength.id +
+                                                selectedSteelLengthElement.id
+                                              }
+                                              checked={checked}
+                                              onCheckedChange={() => {
+                                                const currentAssociations: LengthTypeAssociations[] =
+                                                  structuredClone(
+                                                    selectedLengthTypeAssociations
+                                                  );
+                                                let newAssociations =
+                                                  currentAssociations.filter(
+                                                    (association) =>
+                                                      association.childId !==
+                                                      selectedSteelLengthElement.id
+                                                  );
+
+                                                if (!checked) {
+                                                  newAssociations = [
+                                                    ...newAssociations,
+                                                    {
+                                                      parentId: steelLength.id,
+                                                      childId:
+                                                        selectedSteelLengthElement.id,
+                                                    },
+                                                  ];
+                                                }
+
+                                                setSelectedLengthTypeAssociations(
+                                                  newAssociations
+                                                );
+                                              }}
+                                            >
+                                              {steelLength.name}
+                                            </DropdownMenuCheckboxItem>
+                                          );
+                                        }
+                                      )}
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </TableCell>
                                 <TableCell className="flex justify-end space-x-2">
-                                  <Button
-                                    className="text-xs sm:text-base"
+                                  <TooltipButton
                                     disabled={calculating}
                                     variant="destructive"
-                                    size="sm"
+                                    ButtonIcon={Trash}
+                                    text={language === "da" ? "Slet" : "Remove"}
                                     onClick={() =>
                                       removeSteelLengthElement(
                                         selectedSteelLengthElement.id
                                       )
                                     }
-                                  >
-                                    {language === "da" ? "Slet" : "Remove"}
-                                  </Button>
+                                  />
                                 </TableCell>
                               </TableRow>
                             );
@@ -405,22 +489,7 @@ export default function CalculateLengthNesting() {
               {endResults.nestingParent.length !== 0 &&
                 selectedSteelLengthElements.length !== 0 &&
                 selectedSteelLengths.length !== 0 && (
-                  <>
-                    <h2 className="text-xl font-semibold mb-2 pl-4 mt-4">
-                      {language === "da" ? "Resultat" : "Result"}
-                    </h2>
-                    <div
-                      style={{ borderRadius: "10px" }}
-                      className="p-4 bg-muted text-xs sm:text-base"
-                    >
-                      <ul className="list-disc list-inside space-y-1">
-                        {endResults.nestingParent.map((parent, index) =>
-                          formatResultsLine(parent, index)
-                        )}
-                      </ul>
-                      {getTotalPrice(endResults.nestingParent)}
-                    </div>
-                  </>
+                  <ResultsCard language={language} endResults={endResults} />
                 )}
               <>
                 {endResults.layouts.length > 0 && (
@@ -453,45 +522,13 @@ export default function CalculateLengthNesting() {
                         className="flex mb-4 flex-wrap gap-4 overflow-auto p-4 bg-muted max-h-[calc(68vh)]"
                       >
                         {endResults.layouts.map((layout, i) => {
-                          const width = layout.width * globalScale;
-                          const height = layout.length * globalScale;
-                          const stroke = 4;
-                          const inset = stroke / 2;
-
                           return (
-                            <div key={i} className="mb-4">
-                              <h3 className="text-lg font-semibold mb-2">
-                                {layout.parentName} (
-                                {layout.parentSize.slice(0, -4) + " mm"})
-                              </h3>
-                              <svg
-                                className="sheet mx-auto"
-                                width={width}
-                                height={height}
-                                viewBox={`0 0 ${layout.width} ${layout.length}`}
-                              >
-                                {layout.rectangles.map((rectangle, idx) => (
-                                  <rect
-                                    key={idx}
-                                    x={rectangle.x + inset}
-                                    y={rectangle.y + inset}
-                                    width={
-                                      (rectangle.rotated
-                                        ? rectangle.length
-                                        : rectangle.width) - stroke
-                                    }
-                                    height={
-                                      (rectangle.rotated
-                                        ? rectangle.width
-                                        : rectangle.length) - stroke
-                                    }
-                                    fill="#009eba"
-                                    stroke="#0F47A1"
-                                    strokeWidth={stroke}
-                                  />
-                                ))}
-                              </svg>
-                            </div>
+                            <VisualisationCard
+                              key={layout.parentId + i}
+                              layout={layout}
+                              scaleFactor={globalScale}
+                              isLength
+                            />
                           );
                         })}
                       </div>

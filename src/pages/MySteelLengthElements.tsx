@@ -1,13 +1,5 @@
-import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@/components/ui/table";
+import { useEffect, useMemo, useState } from "react";
+
 import { loadLanguage } from "@/App";
 import {
   ComponentNames,
@@ -15,7 +7,6 @@ import {
   ITEMTYPES,
   type SteelLengthElement,
 } from "@/lib/types";
-import { useSort } from "@/hooks/useSort";
 import {
   clearInputsFromLocalStorage,
   loadInputFromLocalStorage,
@@ -35,6 +26,13 @@ import {
   parseEuropeanFloat,
 } from "@/lib/utils";
 import InputField from "@/components/my-components/InputField";
+import type { Row } from "@/components/my-components/DataTable";
+import DataTable from "@/components/my-components/DataTable";
+import AddButton from "@/components/my-components/AddButton";
+import ClearButton from "@/components/my-components/ClearButton";
+import SaveRowButton from "@/components/my-components/SaveRowButton";
+import EditRowButton from "@/components/my-components/EditRowButton";
+import RemoveRowButton from "@/components/my-components/RemoveRowButton";
 
 export default function MySteelLengthElements() {
   const [language] = useState<string>(() => loadLanguage());
@@ -59,10 +57,7 @@ export default function MySteelLengthElements() {
   const [editedName, setEditedName] = useState<string>("");
   const [editedLength, setEditedLength] = useState<string>("");
   const [beingEdited, setBeingEdited] = useState<string>("");
-  const { sortedItems, handleSort } = useSort<SteelLengthElement>(
-    steelLengthElements,
-    "length"
-  );
+
   const [loading, setIsLoading] = useState<boolean>(false);
 
   useEffect(() => {
@@ -127,20 +122,116 @@ export default function MySteelLengthElements() {
     setBeingEdited("");
   };
 
+  const rows: Row[] = useMemo(() => {
+    return steelLengthElements.map((steelLengthElement) => {
+      const shouldEdit = steelLengthElement.id === beingEdited;
+
+      return {
+        rowKey: steelLengthElement.id,
+        cells: [
+          {
+            headerKey: "name",
+            sortValue: steelLengthElement.name,
+            content: shouldEdit ? (
+              <InputField
+                id="editName"
+                className="max-w-40 text-xs sm:text-base"
+                placeholder={language === "da" ? "Navn" : "Name"}
+                value={editedName}
+                onChange={(e) => setEditedName(e.target.value)}
+              />
+            ) : (
+              steelLengthElement.name
+            ),
+          },
+          {
+            headerKey: "length",
+            sortValue: steelLengthElement.length,
+            content: shouldEdit ? (
+              <InputField
+                id="editLength"
+                className="max-w-40 text-xs sm:text-base"
+                placeholder={language === "da" ? "Længde (mm)" : "Length (mm)"}
+                number
+                value={editedLength}
+                onChange={(e) => setEditedLength(e.target.value)}
+              />
+            ) : (
+              formatEuropeanFloat(steelLengthElement.length)
+            ),
+          },
+
+          {
+            headerKey: "action",
+            className: "flex justify-end space-x-2",
+            content: (
+              <>
+                {shouldEdit ? (
+                  <SaveRowButton
+                    language={language}
+                    onClick={() => SaveEditedSteelLengthElement()}
+                  />
+                ) : (
+                  <EditRowButton
+                    language={language}
+                    onClick={() => {
+                      setBeingEdited(steelLengthElement.id);
+                      setEditedName(steelLengthElement.name);
+
+                      setEditedLength(
+                        formatEuropeanFloat(steelLengthElement.length) ?? ""
+                      );
+                    }}
+                  />
+                )}
+                <RemoveRowButton
+                  language={language}
+                  onClick={async () => {
+                    await deleteSteelLengthElement(steelLengthElement.id);
+                    setSteelLengthElements(
+                      steelLengthElements.filter(
+                        (el) => el.id !== steelLengthElement.id
+                      )
+                    );
+                  }}
+                />
+              </>
+            ),
+          },
+        ],
+      };
+    });
+  }, [steelLengthElements, beingEdited, language, editedLength, editedName]);
+
+  const headers = [
+    {
+      text: language === "da" ? "Navn" : "Name",
+      headerKey: "name",
+      canSort: true,
+    },
+    {
+      text: language === "da" ? "Længde (mm)" : "Length (mm)",
+      headerKey: "length",
+      canSort: true,
+    },
+
+    { text: "", headerKey: "action", canSort: false },
+  ];
+
   return (
     <div className="flex flex-col max-h-[calc(100vh-100px)]">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold p-4">
+        <h1 className="text-2xl font-bold mb-4">
           {language === "da"
             ? "Mine stål længde emner"
             : "My steel Length elements"}
         </h1>
-        <p className="pl-4 pr-4 mb-8">
+        <p className="mb-4">
           {language === "da"
             ? "På denne side kan du tilføje stål længde emner som du kontinuerligt kan genbruge når du udregner nesting."
             : "On this page you can add steel length elements that you can continuously reuse when calculating nestings."}
         </p>
-        <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+        <div className="flex flex-col sm:flex-row gap-2 sm:items-end pt-8">
           <InputField
             label={
               language === "da"
@@ -178,152 +269,33 @@ export default function MySteelLengthElements() {
             }}
           />
 
-          <Button
+          <ClearButton
+            language={language}
             disabled={!name?.trim() && !length?.trim()}
-            variant="ghost"
             onClick={clearInputs}
-          >
-            {language === "da" ? "Ryd" : "Clear"}
-          </Button>
+          />
 
-          <Button
+          <AddButton
+            language={language}
             disabled={!name?.trim() || !isValidEuropeanNumberString(length)}
-            variant="secondary"
             onClick={addNewSteelLengthElement}
-          >
-            {language === "da" ? "Tilføj" : "Add"}
-          </Button>
+          />
         </div>
       </div>
 
       {loading && <TableSkeleton />}
-      {!loading && sortedItems.length === 0 && (
+      {!loading && rows.length === 0 && (
         <EmptyStateLine
           language={language}
           type={ITEMTYPES.SteelLengthElement}
         />
       )}
-      {sortedItems.length !== 0 && !loading && (
+      {rows.length !== 0 && !loading && (
         <div
           style={{ borderRadius: "10px" }}
           className="flex-grow overflow-auto p-4 bg-muted max-h-[calc(70vh)]"
         >
-          <Table>
-            <TableHeader className="top-0 bg-muted z-10">
-              <TableRow className="text-xs sm:text-base">
-                <TableHead
-                  onClick={() => handleSort("name")}
-                  className="cursor-pointer"
-                >
-                  {language === "da" ? "Navn" : "Name"}
-                </TableHead>
-                <TableHead
-                  onClick={() => handleSort("length")}
-                  className="cursor-pointer"
-                >
-                  {language === "da" ? "Længde (mm)" : "Length (mm)"}
-                </TableHead>
-                <TableHead></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sortedItems.map((steelLengthElement) => {
-                const shouldEdit = steelLengthElement.id === beingEdited;
-
-                return (
-                  <TableRow
-                    className="text-xs sm:text-base"
-                    key={steelLengthElement.id}
-                  >
-                    <TableCell>
-                      {shouldEdit ? (
-                        <InputField
-                          id="editName"
-                          className="max-w-40 text-xs sm:text-base"
-                          placeholder={
-                            language === "da"
-                              ? "Stål længde emne navn"
-                              : "Steel length element name"
-                          }
-                          value={editedName}
-                          onChange={(event) =>
-                            setEditedName(event.target.value)
-                          }
-                        />
-                      ) : (
-                        steelLengthElement.name
-                      )}
-                    </TableCell>
-
-                    <TableCell>
-                      {shouldEdit ? (
-                        <InputField
-                          id="editLength"
-                          className="max-w-40 text-xs sm:text-base"
-                          placeholder={
-                            language === "da" ? "Længde (mm)" : "Length (mm)"
-                          }
-                          number
-                          value={editedLength}
-                          onChange={(event) =>
-                            setEditedLength(event.target.value)
-                          }
-                        />
-                      ) : (
-                        formatEuropeanFloat(steelLengthElement.length)
-                      )}
-                    </TableCell>
-
-                    <TableCell className="flex justify-end space-x-2">
-                      <Button
-                        className="mr-2 text-xs sm:text-base"
-                        variant="destructive"
-                        size="sm"
-                        onClick={async () => {
-                          await deleteSteelLengthElement(steelLengthElement.id);
-                          setSteelLengthElements(
-                            steelLengthElements.filter(
-                              (element) => element.id !== steelLengthElement.id
-                            )
-                          );
-                        }}
-                      >
-                        {language === "da" ? "Slet" : "Remove"}
-                      </Button>
-
-                      {shouldEdit ? (
-                        <Button
-                          className="text-xs sm:text-base"
-                          style={{ backgroundColor: "green", color: "white" }}
-                          variant="outline"
-                          size="sm"
-                          onClick={() => SaveEditedSteelLengthElement()}
-                        >
-                          {language === "da" ? "Gem" : "Save"}
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="outline"
-                          className="text-xs sm:text-base"
-                          size="sm"
-                          onClick={() => {
-                            setBeingEdited(steelLengthElement.id);
-                            setEditedName(steelLengthElement.name);
-                            setEditedLength(
-                              formatEuropeanFloat(steelLengthElement.length) ??
-                                ""
-                            );
-                          }}
-                        >
-                          {language === "da" ? "Rediger" : "Edit"}
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+          <DataTable rows={rows} headers={headers} />
         </div>
       )}
     </div>

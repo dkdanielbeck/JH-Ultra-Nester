@@ -21,7 +21,9 @@ export function useSort<T>(items: T[], defaultKey: keyof T) {
       const bVal = b[sortKey];
 
       if (typeof aVal === "string" && typeof bVal === "string") {
-        return sortOrder === "asc" ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+        return sortOrder === "asc"
+          ? aVal.localeCompare(bVal)
+          : bVal.localeCompare(aVal);
       }
 
       if (typeof aVal === "number" && typeof bVal === "number") {

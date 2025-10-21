@@ -10,7 +10,7 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
-import { Loader2Icon } from "lucide-react";
+import { Eraser, Loader2Icon, Trash } from "lucide-react";
 import {
   type Sheet,
   type Machine,
@@ -24,16 +24,15 @@ import {
   saveNestingConfigurationToLocalStorage,
 } from "@/lib/utils-local-storage";
 import { findBest } from "@/lib/utils-nesting";
-import {
-  formatEuropeanFloat,
-  formatResultsLine,
-  getTotalPrice,
-} from "@/lib/utils";
+import { formatEuropeanFloat } from "@/lib/utils";
 import EmptyStateLine from "@/components/my-components/EmptyStateLine";
 import DropdownMenuConsolidated from "@/components/my-components/DropdownMenuConsolidated";
 import { fetchSheets } from "@/lib/database calls/sheets";
 import { fetchSheetElements } from "@/lib/database calls/sheetElements";
 import { fetchMachines } from "@/lib/database calls/sheetMachines";
+import TooltipButton from "@/components/my-components/TooltipButton";
+import VisualisationCard from "@/components/my-components/VisualisationCard";
+import ResultsCard from "@/components/my-components/ResultsCard";
 
 export default function CalculateSheetNesting() {
   const savedConfig = loadNestingConfigurationFromLocalStorage(
@@ -119,8 +118,9 @@ export default function CalculateSheetNesting() {
       setSelectedProfile(
         machines.find((m) => m.id === savedConfig.selectedProfileId)
       );
+    } else {
+      setSelectedProfile(machines.find((m) => m.default));
     }
-    setSelectedProfile(machines.find((m) => m.default));
   }, [machines]);
 
   const toggleElementSelection = (sheetElement: SheetElement) => {
@@ -313,8 +313,22 @@ export default function CalculateSheetNesting() {
                           sheets.length !== 0 &&
                           sheetElements.length !== 0 && (
                             <div className="w-full flex justify-between">
+                              <TooltipButton
+                                disabled={
+                                  isCalculating ||
+                                  (selectedSheets?.length === 0 &&
+                                    selectedSheetElements?.length === 0 &&
+                                    selectedProfile === undefined)
+                                }
+                                ButtonIcon={Eraser}
+                                text={language === "da" ? "Ryd" : "Clear"}
+                                variant="ghost"
+                                onClick={clearSelections}
+                              />
+
                               <Button
-                                className="w-[48%]"
+                                className="w-[92%] tooltip-button"
+                                data-tooltip-variant={"default"}
                                 disabled={
                                   isCalculating ||
                                   selectedSheets?.length === 0 ||
@@ -331,19 +345,6 @@ export default function CalculateSheetNesting() {
                                   "Calculate nesting"
                                 )}
                               </Button>
-                              <Button
-                                className="w-[48%]"
-                                disabled={
-                                  isCalculating ||
-                                  (selectedSheets?.length === 0 &&
-                                    selectedSheetElements?.length === 0 &&
-                                    selectedProfile === undefined)
-                                }
-                                variant="ghost"
-                                onClick={clearSelections}
-                              >
-                                {language === "da" ? "Ryd" : "Clear"}
-                              </Button>
                             </div>
                           )}
                       </div>
@@ -356,16 +357,16 @@ export default function CalculateSheetNesting() {
                       <Table>
                         <TableHeader className="top-0 bg-muted z-10">
                           <TableRow className="text-xs sm:text-base">
-                            <TableHead className="cursor-pointer">
+                            <TableHead>
                               {language === "da" ? "Navn" : "Name"}
                             </TableHead>
-                            <TableHead className="cursor-pointer">
+                            <TableHead>
                               {language === "da"
                                 ? "Længde (mm)"
                                 : "Length (mm)"}
                             </TableHead>
 
-                            <TableHead className="cursor-pointer">
+                            <TableHead>
                               {language === "da" ? "Bredde (mm)" : "Width (mm)"}
                             </TableHead>
                             <TableHead>
@@ -397,7 +398,7 @@ export default function CalculateSheetNesting() {
                                 </TableCell>
                                 <TableCell>
                                   <Input
-                                    className="max-w-40 text-xs sm:text-base"
+                                    className="max-w-20 text-xs sm:text-base"
                                     placeholder={
                                       language === "da" ? "Antal" : "Quantity"
                                     }
@@ -416,17 +417,15 @@ export default function CalculateSheetNesting() {
                                   />
                                 </TableCell>
                                 <TableCell className="flex justify-end space-x-2">
-                                  <Button
+                                  <TooltipButton
                                     disabled={isCalculating}
                                     variant="destructive"
-                                    size="sm"
-                                    className="text-xs sm:text-base"
+                                    ButtonIcon={Trash}
+                                    text={language === "da" ? "Slet" : "Remove"}
                                     onClick={() =>
                                       removeElement(selectedSheetElement.id)
                                     }
-                                  >
-                                    {language === "da" ? "Slet" : "Remove"}
-                                  </Button>
+                                  />
                                 </TableCell>
                               </TableRow>
                             );
@@ -441,22 +440,7 @@ export default function CalculateSheetNesting() {
                 {endResults.nestingParent.length !== 0 &&
                   selectedSheetElements.length !== 0 &&
                   selectedSheets.length !== 0 && (
-                    <>
-                      <h2 className="text-xl font-semibold mb-2 pl-4 mt-4">
-                        {language === "da" ? "Resultat" : "Result"}
-                      </h2>
-                      <div
-                        style={{ borderRadius: "10px" }}
-                        className="p-4 bg-muted text-xs sm:text-base"
-                      >
-                        <ul className="list-disc list-inside space-y-1">
-                          {endResults.nestingParent.map((parent, index) =>
-                            formatResultsLine(parent, index)
-                          )}
-                        </ul>
-                        {getTotalPrice(endResults.nestingParent)}
-                      </div>
-                    </>
+                    <ResultsCard language={language} endResults={endResults} />
                   )}
                 <>
                   {endResults.layouts.length > 0 && (
@@ -489,45 +473,12 @@ export default function CalculateSheetNesting() {
                           className="flex mb-4 flex-wrap gap-4 overflow-auto p-4 bg-muted max-h-[calc(68vh)]"
                         >
                           {endResults.layouts.map((layout, i) => {
-                            const width = layout.width * globalScale;
-                            const height = layout.length * globalScale;
-                            const stroke = 4;
-                            const inset = stroke / 2;
-
                             return (
-                              <div key={i} className="mb-4">
-                                <h3 className="text-lg font-semibold mb-2">
-                                  {layout.parentName} (
-                                  {layout.parentSize + " mm"})
-                                </h3>
-                                <svg
-                                  className="sheet"
-                                  width={width}
-                                  height={height}
-                                  viewBox={`0 0 ${layout.width} ${layout.length}`}
-                                >
-                                  {layout.rectangles.map((rectangle, idx) => (
-                                    <rect
-                                      key={idx}
-                                      x={rectangle.x + inset}
-                                      y={rectangle.y + inset}
-                                      width={
-                                        (rectangle.rotated
-                                          ? rectangle.length
-                                          : rectangle.width) - stroke
-                                      }
-                                      height={
-                                        (rectangle.rotated
-                                          ? rectangle.width
-                                          : rectangle.length) - stroke
-                                      }
-                                      fill="#009eba"
-                                      stroke="#0F47A1"
-                                      strokeWidth={stroke}
-                                    />
-                                  ))}
-                                </svg>
-                              </div>
+                              <VisualisationCard
+                                key={layout.parentId + i}
+                                layout={layout}
+                                scaleFactor={globalScale}
+                              />
                             );
                           })}
                         </div>

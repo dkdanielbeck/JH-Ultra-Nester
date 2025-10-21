@@ -1,13 +1,5 @@
-import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@/components/ui/table";
+import { useEffect, useMemo, useState } from "react";
+
 import { loadLanguage } from "@/App";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -16,7 +8,6 @@ import {
   ITEMTYPES,
   type Machine,
 } from "@/lib/types";
-import { useSort } from "@/hooks/useSort";
 import {
   clearInputsFromLocalStorage,
   loadInputFromLocalStorage,
@@ -36,6 +27,13 @@ import {
   parseEuropeanFloat,
 } from "@/lib/utils";
 import InputField from "@/components/my-components/InputField";
+import type { Row } from "@/components/my-components/DataTable";
+import DataTable from "@/components/my-components/DataTable";
+import AddButton from "@/components/my-components/AddButton";
+import ClearButton from "@/components/my-components/ClearButton";
+import SaveRowButton from "@/components/my-components/SaveRowButton";
+import EditRowButton from "@/components/my-components/EditRowButton";
+import RemoveRowButton from "@/components/my-components/RemoveRowButton";
 
 export default function MySheetMachines() {
   const [language] = useState<string>(() => loadLanguage());
@@ -63,7 +61,7 @@ export default function MySheetMachines() {
   const [editedBorder, setEditedBorder] = useState<string>("");
   const [editedMargin, setEditedMargin] = useState<string>("");
   const [beingEdited, setBeingEdited] = useState<string>("");
-  const { sortedItems, handleSort } = useSort<Machine>(machines, "name");
+
   const [loading, setIsLoading] = useState<boolean>(false);
 
   useEffect(() => {
@@ -185,18 +183,163 @@ export default function MySheetMachines() {
     setMachines(updatedMachines);
   };
 
+  const rows: Row[] = useMemo(() => {
+    return machines.map((machine) => {
+      const shouldEdit = machine.id === beingEdited;
+
+      return {
+        rowKey: machine.id,
+        cells: [
+          {
+            headerKey: "name",
+            sortValue: machine.name,
+            content: shouldEdit ? (
+              <InputField
+                id="editName"
+                className="max-w-40 text-xs sm:text-base"
+                placeholder={language === "da" ? "Navn" : "Name"}
+                value={editedName}
+                onChange={(e) => setEditedName(e.target.value)}
+              />
+            ) : (
+              machine.name
+            ),
+          },
+          {
+            headerKey: "margin",
+            sortValue: machine.margin,
+            content: shouldEdit ? (
+              <InputField
+                id="editLength"
+                className="max-w-40 text-xs sm:text-base"
+                placeholder={language === "da" ? "Margen (mm)" : "Margin (mm)"}
+                number
+                value={editedMargin}
+                onChange={(e) => setEditedMargin(e.target.value)}
+              />
+            ) : (
+              formatEuropeanFloat(machine.margin)
+            ),
+          },
+          {
+            headerKey: "border",
+            sortValue: machine.border,
+            content: shouldEdit ? (
+              <InputField
+                id="editBorder"
+                className="max-w-40 text-xs sm:text-base"
+                placeholder={language === "da" ? "Kant (mm)" : "Border (mm)"}
+                number
+                value={editedBorder}
+                onChange={(e) => setEditedBorder(e.target.value)}
+              />
+            ) : (
+              formatEuropeanFloat(machine.border)
+            ),
+          },
+          {
+            headerKey: "default",
+            sortValue: machine.default ? machine.default : false,
+            content: (
+              <Checkbox
+                className="checkbox"
+                checked={machine?.default === true}
+                onCheckedChange={() => setDefault(machine.id)}
+              />
+            ),
+          },
+          {
+            headerKey: "straight",
+            sortValue: machine.straightCuts ? machine.straightCuts : false,
+            content: (
+              <Checkbox
+                className="checkbox"
+                checked={machine?.straightCuts === true}
+                onCheckedChange={() => setOnlyStraightCuts(machine.id)}
+              />
+            ),
+          },
+          {
+            headerKey: "action",
+            className: "flex justify-end space-x-2",
+            content: (
+              <>
+                {shouldEdit ? (
+                  <SaveRowButton
+                    language={language}
+                    onClick={() => SaveEditedMachine()}
+                  />
+                ) : (
+                  <EditRowButton
+                    language={language}
+                    onClick={() => {
+                      setBeingEdited(machine.id);
+                      setEditedName(machine.name);
+                      setEditedBorder(
+                        formatEuropeanFloat(machine.border) ?? ""
+                      );
+                      setEditedMargin(
+                        formatEuropeanFloat(machine.margin) ?? ""
+                      );
+                    }}
+                  />
+                )}
+                <RemoveRowButton
+                  language={language}
+                  onClick={async () => {
+                    await deleteMachine(machine.id);
+                    setMachines(machines.filter((el) => el.id !== machine.id));
+                  }}
+                />
+              </>
+            ),
+          },
+        ],
+      };
+    });
+  }, [machines, beingEdited, language, editedName, editedBorder, editedMargin]);
+
+  const headers = [
+    {
+      text: language === "da" ? "Navn" : "Name",
+      headerKey: "name",
+      canSort: true,
+    },
+    {
+      text: language === "da" ? "Margen (mm)" : "Margin (mm)",
+      headerKey: "margin",
+      canSort: true,
+    },
+    {
+      text: language === "da" ? "Kant (mm)" : "Border (mm)",
+      headerKey: "border",
+      canSort: true,
+    },
+    {
+      text: language === "da" ? "Sæt som standard" : "Set as default",
+      headerKey: "default",
+      canSort: true,
+    },
+    {
+      text: language === "da" ? "Tving lige snit" : "Force straight cuts",
+      headerKey: "straight",
+      canSort: true,
+    },
+    { text: "", headerKey: "action", canSort: false },
+  ];
+
   return (
     <div className="flex flex-col max-h-[calc(100vh-100px)]">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold p-4">
-          {language === "da" ? "Mine plade maskiner" : "My sheet machines"}
+        <h1 className="text-2xl font-bold mb-4">
+          {language === "da" ? "Mine plade maskiner" : "My machine machines"}
         </h1>
-        <p className="pl-4 pr-4 mb-8">
+        <p className="mb-4">
           {language === "da"
             ? "På denne side kan du tilføje maskiner med tilhørende margen og kant som du kontinuerligt kan genbruge når du udregner nesting"
             : "On this page you can add machines with defined margin and border that you can continuously reuse when calculating nestings."}
         </p>
-        <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+        <div className="flex flex-col sm:flex-row gap-2 sm:items-end pt-8">
           <InputField
             label={language === "da" ? "Maskine navn" : "Machine name"}
             id="machineName"
@@ -246,196 +389,33 @@ export default function MySheetMachines() {
             }}
           />
 
-          <Button
+          <ClearButton
+            language={language}
             disabled={!name?.trim() && !margin?.trim() && !border?.trim()}
-            variant="ghost"
             onClick={clearInputs}
-          >
-            {language === "da" ? "Ryd" : "Clear"}
-          </Button>
+          />
 
-          <Button
+          <AddButton
+            language={language}
             disabled={
               !name?.trim() ||
               !isValidEuropeanNumberString(margin) ||
               !isValidEuropeanNumberString(border)
             }
-            variant="secondary"
             onClick={addNewMachine}
-          >
-            {language === "da" ? "Tilføj" : "Add"}
-          </Button>
+          />
         </div>
       </div>
       {loading && <TableSkeleton />}
-      {!loading && sortedItems.length === 0 && (
+      {!loading && rows.length === 0 && (
         <EmptyStateLine language={language} type={ITEMTYPES.Machine} />
       )}
-      {sortedItems.length !== 0 && !loading && (
+      {rows.length !== 0 && !loading && (
         <div
           style={{ borderRadius: "10px" }}
           className="flex-grow overflow-auto p-4 bg-muted max-h-[calc(70vh)]"
         >
-          <Table>
-            <TableHeader className="top-0 bg-muted z-10">
-              <TableRow className="text-xs sm:text-base">
-                <TableHead
-                  onClick={() => handleSort("name")}
-                  className="cursor-pointer"
-                >
-                  {language === "da" ? "Navn" : "Name"}
-                </TableHead>
-                <TableHead
-                  onClick={() => handleSort("margin")}
-                  className="cursor-pointer"
-                >
-                  {language === "da" ? "Margen (mm)" : "Margin (mm)"}
-                </TableHead>
-                <TableHead
-                  onClick={() => handleSort("border")}
-                  className="cursor-pointer"
-                >
-                  {language === "da" ? "Kant (mm)" : "Border (mm)"}
-                </TableHead>
-                <TableHead>
-                  {language === "da" ? "Sæt som standard" : "Set as default"}
-                </TableHead>
-                <TableHead>
-                  {language === "da"
-                    ? "Tving lige snit"
-                    : "Force straight cuts"}
-                </TableHead>
-                <TableHead></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sortedItems.map((machine) => {
-                const shouldEdit = machine.id === beingEdited;
-
-                return (
-                  <TableRow className="text-xs sm:text-base" key={machine.id}>
-                    <TableCell>
-                      {shouldEdit ? (
-                        <InputField
-                          id="editName"
-                          className="max-w-40 text-xs sm:text-base"
-                          placeholder={
-                            language === "da" ? "Maskine navn" : "Machine name"
-                          }
-                          value={editedName}
-                          onChange={(event) =>
-                            setEditedName(event.target.value)
-                          }
-                        />
-                      ) : (
-                        machine.name
-                      )}
-                    </TableCell>
-
-                    <TableCell>
-                      {shouldEdit ? (
-                        <InputField
-                          id="editMargin"
-                          className="max-w-40 text-xs sm:text-base"
-                          placeholder={
-                            language === "da" ? "Margen (mm)" : "Margin (mm)"
-                          }
-                          number
-                          value={editedMargin}
-                          onChange={(event) =>
-                            setEditedMargin(event.target.value)
-                          }
-                        />
-                      ) : (
-                        formatEuropeanFloat(machine.margin)
-                      )}
-                    </TableCell>
-
-                    <TableCell>
-                      {shouldEdit ? (
-                        <InputField
-                          id="editBorder"
-                          className="max-w-40 text-xs sm:text-base"
-                          placeholder={
-                            language === "da" ? "Kant (mm)" : "Border (mm)"
-                          }
-                          number
-                          value={editedBorder}
-                          onChange={(event) =>
-                            setEditedBorder(event.target.value)
-                          }
-                        />
-                      ) : (
-                        formatEuropeanFloat(machine.border)
-                      )}
-                    </TableCell>
-
-                    <TableCell>
-                      <Checkbox
-                        className="checkbox"
-                        checked={machine?.default === true}
-                        onCheckedChange={() => setDefault(machine.id)}
-                      />
-                    </TableCell>
-
-                    <TableCell>
-                      <Checkbox
-                        className="checkbox"
-                        checked={machine?.straightCuts === true}
-                        onCheckedChange={() => setOnlyStraightCuts(machine.id)}
-                      />
-                    </TableCell>
-
-                    <TableCell className="flex justify-end space-x-2">
-                      <Button
-                        className="mr-2 text-xs sm:text-base"
-                        variant="destructive"
-                        size="sm"
-                        onClick={async () => {
-                          await deleteMachine(machine.id);
-                          setMachines(
-                            machines.filter((el) => el.id !== machine.id)
-                          );
-                        }}
-                      >
-                        {language === "da" ? "Slet" : "Remove"}
-                      </Button>
-
-                      {shouldEdit ? (
-                        <Button
-                          style={{ backgroundColor: "green", color: "white" }}
-                          className="text-xs sm:text-base"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => SaveEditedMachine()}
-                        >
-                          {language === "da" ? "Gem" : "Save"}
-                        </Button>
-                      ) : (
-                        <Button
-                          className="text-xs sm:text-base"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setBeingEdited(machine.id);
-                            setEditedName(machine.name);
-                            setEditedBorder(
-                              formatEuropeanFloat(machine.border) ?? ""
-                            );
-                            setEditedMargin(
-                              formatEuropeanFloat(machine.margin) ?? ""
-                            );
-                          }}
-                        >
-                          {language === "da" ? "Rediger" : "Edit"}
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+          <DataTable rows={rows} headers={headers} />
         </div>
       )}
     </div>
