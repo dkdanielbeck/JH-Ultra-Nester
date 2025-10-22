@@ -111,7 +111,7 @@ export default function CalculateSheetNesting() {
     };
 
     loadItems();
-  }, [savedConfig]);
+  }, []);
 
   useEffect(() => {
     if (savedConfig?.selectedProfileId) {

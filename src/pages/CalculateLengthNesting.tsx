@@ -117,7 +117,7 @@ export default function CalculateLengthNesting() {
     };
 
     loadItems();
-  }, [savedConfig]);
+  }, []);
 
   const toggleSteelElementSelection = (
     steelLengthElement: SteelLengthElement
