@@ -314,84 +314,80 @@ export default function MySheets() {
           ? "På denne side kan du tilføje plader som du kontinuerligt kan genbruge når du udregner nesting. Vær opmærksom på at Længde altid vil ende med at være det største tal"
           : "On this page you can add sheets that you can continuously reuse when calculating nestings. Take note that Length will always end up the bigger number"
       }
-      inputContent={
-        <div className="flex flex-col sm:flex-row gap-2 sm:items-end pt-8">
-          <InputField
-            label={language === "da" ? "Navn" : "Name"}
-            id="name"
-            placeholder={
-              language === "da"
-                ? "f.eks. Standard, Mini"
-                : "e.g. Standard, Mini"
-            }
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-
-          <InputField
-            label={language === "da" ? "Længde (mm)" : "Length (mm)"}
-            id="length"
-            placeholder={language === "da" ? "f.eks. 2000" : "e.g. 2000"}
-            number
-            value={length}
-            onChange={(e) => setLength(e.target.value)}
-          />
-
-          <InputField
-            id="width"
-            label={language === "da" ? "Bredde (mm)" : "Width (mm)"}
-            placeholder={language === "da" ? "f.eks. 1000" : "e.g. 1000"}
-            number
-            value={width}
-            onChange={(e) => setWidth(e.target.value)}
-          />
-
-          <InputField
-            id="price"
-            label={language === "da" ? "Kilopris" : "Price per kilo"}
-            placeholder={language === "da" ? "f.eks. 24,5" : "e.g. 24.5"}
-            number
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-          />
-
-          <InputField
-            id="weight"
-            label={language === "da" ? "Vægt (kg)" : "Weight (kg)"}
-            placeholder={language === "da" ? "f.eks. 57" : "e.g. 57"}
-            number
-            value={weight}
-            onChange={(e) => setWeight(e.target.value)}
-          />
-
-          <ClearButton
-            language={language}
-            disabled={
-              !name?.trim() &&
-              !length?.trim() &&
-              !width?.trim() &&
-              !weight.trim() &&
-              !price.trim()
-            }
-            onClick={clearInputs}
-          />
-
-          <AddButton
-            language={language}
-            disabled={
-              !name?.trim() ||
-              !length?.trim() ||
-              !width?.trim() ||
-              !isValidEuropeanNumberString(length) ||
-              !isValidEuropeanNumberString(width) ||
-              (!!price?.trim() && !isValidEuropeanNumberString(price)) ||
-              (!!weight?.trim() && !isValidEuropeanNumberString(weight))
-            }
-            onClick={addSheet}
-          />
-        </div>
-      }
     >
+      <div className="flex flex-col sm:flex-row gap-2 sm:items-end pt-8 mb-8">
+        <InputField
+          label={language === "da" ? "Navn" : "Name"}
+          id="name"
+          placeholder={
+            language === "da" ? "f.eks. Standard, Mini" : "e.g. Standard, Mini"
+          }
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+
+        <InputField
+          label={language === "da" ? "Længde (mm)" : "Length (mm)"}
+          id="length"
+          placeholder={language === "da" ? "f.eks. 2000" : "e.g. 2000"}
+          number
+          value={length}
+          onChange={(e) => setLength(e.target.value)}
+        />
+
+        <InputField
+          id="width"
+          label={language === "da" ? "Bredde (mm)" : "Width (mm)"}
+          placeholder={language === "da" ? "f.eks. 1000" : "e.g. 1000"}
+          number
+          value={width}
+          onChange={(e) => setWidth(e.target.value)}
+        />
+
+        <InputField
+          id="price"
+          label={language === "da" ? "Kilopris" : "Price per kilo"}
+          placeholder={language === "da" ? "f.eks. 24,5" : "e.g. 24.5"}
+          number
+          value={price}
+          onChange={(e) => setPrice(e.target.value)}
+        />
+
+        <InputField
+          id="weight"
+          label={language === "da" ? "Vægt (kg)" : "Weight (kg)"}
+          placeholder={language === "da" ? "f.eks. 57" : "e.g. 57"}
+          number
+          value={weight}
+          onChange={(e) => setWeight(e.target.value)}
+        />
+
+        <ClearButton
+          language={language}
+          disabled={
+            !name?.trim() &&
+            !length?.trim() &&
+            !width?.trim() &&
+            !weight.trim() &&
+            !price.trim()
+          }
+          onClick={clearInputs}
+        />
+
+        <AddButton
+          language={language}
+          disabled={
+            !name?.trim() ||
+            !length?.trim() ||
+            !width?.trim() ||
+            !isValidEuropeanNumberString(length) ||
+            !isValidEuropeanNumberString(width) ||
+            (!!price?.trim() && !isValidEuropeanNumberString(price)) ||
+            (!!weight?.trim() && !isValidEuropeanNumberString(weight))
+          }
+          onClick={addSheet}
+        />
+      </div>
       {loading && <TableSkeleton />}
       {!loading && rows.length === 0 && (
         <EmptyStateLine language={language} type={ITEMTYPES.Sheet} />

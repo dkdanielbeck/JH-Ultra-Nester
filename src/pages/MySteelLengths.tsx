@@ -292,70 +292,68 @@ export default function MySteelLengths() {
           ? "På denne side kan du tilføje stål længder som du kontinuerligt kan genbruge når du udregner nesting."
           : "On this page you can add steel lengths that you can continuously reuse when calculating nestings."
       }
-      inputContent={
-        <div className="flex flex-col sm:flex-row gap-2 sm:items-end pt-8">
-          <InputField
-            label={language === "da" ? "Stål længde navn" : "Steel length name"}
-            id="steelLengthName"
-            placeholder={
-              language === "da" ? "f.eks. Fladstål 40x5" : "e.g. Flat bar 40x5"
-            }
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-          />
-
-          <InputField
-            label={language === "da" ? "Længde (mm)" : "Length (mm)"}
-            id="steelLengthLength"
-            placeholder={language === "da" ? "f.eks. 6000" : "e.g. 6000"}
-            number
-            value={length}
-            onChange={(event) => setLength(event.target.value)}
-          />
-
-          <InputField
-            label={language === "da" ? "Kilopris" : "Price per kilo"}
-            id="steelLengthPrice"
-            placeholder={language === "da" ? "f.eks. 24,5" : "e.g. 24.5"}
-            number
-            value={price}
-            onChange={(event) => setPrice(event.target.value)}
-          />
-
-          <InputField
-            label={language === "da" ? "Vægt (kg)" : "Weight (kg)"}
-            id="steelLengthWeight"
-            placeholder={language === "da" ? "f.eks. 57" : "e.g. 57"}
-            number
-            value={weight}
-            onChange={(event) => setWeight(event.target.value)}
-          />
-
-          <ClearButton
-            language={language}
-            disabled={
-              !name?.trim() &&
-              !length?.trim() &&
-              !price?.trim() &&
-              !weight?.trim()
-            }
-            onClick={clearInputs}
-          />
-
-          <AddButton
-            language={language}
-            disabled={
-              !name?.trim() ||
-              !length?.trim() ||
-              !isValidEuropeanNumberString(length) ||
-              (!!price?.trim() && !isValidEuropeanNumberString(price)) ||
-              (!!weight?.trim() && !isValidEuropeanNumberString(weight))
-            }
-            onClick={addNewSteelLength}
-          />
-        </div>
-      }
     >
+      <div className="flex flex-col sm:flex-row gap-2 sm:items-end pt-8 mb-8">
+        <InputField
+          label={language === "da" ? "Stål længde navn" : "Steel length name"}
+          id="steelLengthName"
+          placeholder={
+            language === "da" ? "f.eks. Fladstål 40x5" : "e.g. Flat bar 40x5"
+          }
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+        />
+
+        <InputField
+          label={language === "da" ? "Længde (mm)" : "Length (mm)"}
+          id="steelLengthLength"
+          placeholder={language === "da" ? "f.eks. 6000" : "e.g. 6000"}
+          number
+          value={length}
+          onChange={(event) => setLength(event.target.value)}
+        />
+
+        <InputField
+          label={language === "da" ? "Kilopris" : "Price per kilo"}
+          id="steelLengthPrice"
+          placeholder={language === "da" ? "f.eks. 24,5" : "e.g. 24.5"}
+          number
+          value={price}
+          onChange={(event) => setPrice(event.target.value)}
+        />
+
+        <InputField
+          label={language === "da" ? "Vægt (kg)" : "Weight (kg)"}
+          id="steelLengthWeight"
+          placeholder={language === "da" ? "f.eks. 57" : "e.g. 57"}
+          number
+          value={weight}
+          onChange={(event) => setWeight(event.target.value)}
+        />
+
+        <ClearButton
+          language={language}
+          disabled={
+            !name?.trim() &&
+            !length?.trim() &&
+            !price?.trim() &&
+            !weight?.trim()
+          }
+          onClick={clearInputs}
+        />
+
+        <AddButton
+          language={language}
+          disabled={
+            !name?.trim() ||
+            !length?.trim() ||
+            !isValidEuropeanNumberString(length) ||
+            (!!price?.trim() && !isValidEuropeanNumberString(price)) ||
+            (!!weight?.trim() && !isValidEuropeanNumberString(weight))
+          }
+          onClick={addNewSteelLength}
+        />
+      </div>
       {loading && <TableSkeleton />}
       {!loading && rows.length === 0 && (
         <EmptyStateLine language={language} type={ITEMTYPES.SteelLength} />

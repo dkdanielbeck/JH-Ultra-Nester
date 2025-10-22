@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import VisualisationCard from "@/components/my-components/VisualisationCard";
 import ResultsCard from "@/components/my-components/ResultsCard";
+import PageLayout from "@/components/my-components/PageLayout";
 
 export default function CalculateLengthNesting() {
   const savedConfigRef = useRef(
@@ -241,308 +242,302 @@ export default function CalculateLengthNesting() {
     setSelectedLengthTypeAssociations([]);
   };
   return (
-    <div className="flex max-h-[calc(100vh-100px)]">
+    <PageLayout
+      title={
+        language === "da"
+          ? "Udregn stål længde nesting"
+          : "Calculate steel length nesting"
+      }
+      description={
+        language === "da"
+          ? "På denne side kan du vælge hvilke stål længder og hvilke stål længde emner du ønsker at udregne nesting med"
+          : "On this page you can select which steel lengths and which steel length elements you wish to use to calculate nesting"
+      }
+    >
       <div className="w-full">
-        <div className="w-full">
-          <h1 className="text-2xl font-bold mb-4">
-            {language === "da"
-              ? "Udregn stål længde nesting"
-              : "Calculate steel length nesting"}
-          </h1>
-          <p className="mb-4 ">
-            {language === "da"
-              ? "På denne side kan du vælge hvilke stål længder og hvilke stål længde emner du ønsker at udregne nesting med"
-              : "On this page you can select which steel lengths and which steel length elements you wish to use to calculate nesting"}
-          </p>
-          {(steelLengths.length === 0 || steelLengthElements.length === 0) &&
-            !loading && (
-              <div className="flex flex-col gap-4 mt-8">
-                {steelLengthElements.length === 0 && (
-                  <EmptyStateLine
-                    language={language}
-                    type={ITEMTYPES.SteelLengthElement}
-                    href="/steel-length-elements"
-                  />
-                )}
+        {(steelLengths.length === 0 || steelLengthElements.length === 0) &&
+          !loading && (
+            <div className="flex flex-col gap-4 mt-8">
+              {steelLengthElements.length === 0 && (
+                <EmptyStateLine
+                  language={language}
+                  type={ITEMTYPES.SteelLengthElement}
+                  href="/steel-length-elements"
+                />
+              )}
 
-                {steelLengths.length === 0 && (
-                  <EmptyStateLine
-                    language={language}
-                    type={ITEMTYPES.SteelLength}
-                    href="/steel-lengths"
-                  />
-                )}
-              </div>
-            )}
-        </div>
-        {steelLengthElements.length !== 0 && steelLengths.length !== 0 && (
-          <div className="flex w-full flex-col sm:flex-row">
-            <div className="flex-grow p-4 mb-2 sm:w-1/2 w-full">
-              <div className="flex flex-col gap-4 mt-9">
-                {steelLengths.length !== 0 &&
-                  steelLengthElements.length !== 0 && (
-                    <div className="flex flex-col gap-6 ">
-                      <DropdownMenuConsolidated<SteelLengthElement>
-                        language={language}
-                        items={steelLengthElements}
-                        selectedItems={selectedSteelLengthElements}
-                        onSelect={(steelLengthElement) =>
-                          toggleSteelElementSelection(steelLengthElement)
-                        }
-                      />
-                      <DropdownMenuConsolidated<SteelLength>
-                        language={language}
-                        items={steelLengths}
-                        selectedItems={selectedSteelLengths}
-                        onSelect={(steelLength) =>
-                          toggleSteelLengthSelection(steelLength)
-                        }
-                      />
+              {steelLengths.length === 0 && (
+                <EmptyStateLine
+                  language={language}
+                  type={ITEMTYPES.SteelLength}
+                  href="/steel-lengths"
+                />
+              )}
+            </div>
+          )}
+      </div>
+      {steelLengthElements.length !== 0 && steelLengths.length !== 0 && (
+        <div className="flex w-full flex-col sm:flex-row gap-4">
+          <div className="flex-grow mb-2 sm:w-1/2 w-full">
+            <div className="flex flex-col gap-4 mt-9">
+              {steelLengths.length !== 0 &&
+                steelLengthElements.length !== 0 && (
+                  <div className="flex flex-col gap-6 ">
+                    <DropdownMenuConsolidated<SteelLengthElement>
+                      language={language}
+                      items={steelLengthElements}
+                      selectedItems={selectedSteelLengthElements}
+                      onSelect={(steelLengthElement) =>
+                        toggleSteelElementSelection(steelLengthElement)
+                      }
+                    />
+                    <DropdownMenuConsolidated<SteelLength>
+                      language={language}
+                      items={steelLengths}
+                      selectedItems={selectedSteelLengths}
+                      onSelect={(steelLength) =>
+                        toggleSteelLengthSelection(steelLength)
+                      }
+                    />
 
-                      {steelLengths.length !== 0 &&
-                        steelLengthElements.length !== 0 && (
-                          <div className="w-full flex justify-between">
-                            <TooltipButton
-                              disabled={
-                                calculating ||
-                                (selectedSteelLengths?.length === 0 &&
-                                  selectedSteelLengthElements?.length === 0)
-                              }
-                              ButtonIcon={Eraser}
-                              text={language === "da" ? "Ryd" : "Clear"}
-                              variant="ghost"
-                              onClick={clearSelections}
-                            />
+                    {steelLengths.length !== 0 &&
+                      steelLengthElements.length !== 0 && (
+                        <div className="w-full flex justify-between">
+                          <TooltipButton
+                            disabled={
+                              calculating ||
+                              (selectedSteelLengths?.length === 0 &&
+                                selectedSteelLengthElements?.length === 0)
+                            }
+                            ButtonIcon={Eraser}
+                            text={language === "da" ? "Ryd" : "Clear"}
+                            variant="ghost"
+                            onClick={clearSelections}
+                          />
 
-                            <Button
-                              className="w-[92%] tooltip-button"
-                              data-tooltip-variant={"default"}
-                              disabled={
-                                calculating ||
-                                selectedSteelLengths?.length === 0 ||
-                                selectedSteelLengthElements?.length === 0
-                              }
-                              onClick={() => getResults()}
-                            >
-                              {calculating ? (
-                                <Loader2Icon className="animate-spin" />
-                              ) : language === "da" ? (
-                                "Udregn nesting"
-                              ) : (
-                                "Calculate nesting"
-                              )}
-                            </Button>
-                          </div>
-                        )}
-                    </div>
-                  )}
-
-                {selectedSteelLengthElements.length !== 0 && (
-                  <div
-                    style={{ borderRadius: "10px" }}
-                    className="flex-grow overflow-auto p-4 bg-muted "
-                  >
-                    <Table>
-                      <TableHeader className="top-0 bg-muted z-10">
-                        <TableRow className="text-xs sm:text-base">
-                          <TableHead>
-                            {language === "da" ? "Navn" : "Name"}
-                          </TableHead>
-                          <TableHead>
-                            {language === "da" ? "Længde (mm)" : "Length (mm)"}
-                          </TableHead>
-
-                          <TableHead>
-                            {language === "da" ? "Antal" : "Quantity"}
-                          </TableHead>
-                          <TableHead>
-                            {language === "da" ? "Længde type" : "Length type"}
-                          </TableHead>
-                          <TableHead></TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {selectedSteelLengthElements.map(
-                          (selectedSteelLengthElement) => {
-                            if (!selectedSteelLengthElement) return null;
-                            return (
-                              <TableRow
-                                className="text-xs sm:text-base"
-                                key={selectedSteelLengthElement.id}
-                              >
-                                <TableCell>
-                                  {selectedSteelLengthElement.name}
-                                </TableCell>
-                                <TableCell>
-                                  {formatEuropeanFloat(
-                                    selectedSteelLengthElement.length
-                                  )}
-                                </TableCell>
-                                <TableCell>
-                                  <Input
-                                    className="max-w-20 text-xs sm:text-base"
-                                    placeholder={
-                                      language === "da" ? "Antal" : "Quantity"
-                                    }
-                                    type="number"
-                                    value={
-                                      quantities[
-                                        selectedSteelLengthElement.id
-                                      ] ?? 1
-                                    }
-                                    onChange={(e) =>
-                                      setQuantities((prev) => ({
-                                        ...prev,
-                                        [selectedSteelLengthElement.id]:
-                                          parseInt(e.target.value || "1"),
-                                      }))
-                                    }
-                                  />
-                                </TableCell>
-                                <TableCell>
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                      <Button
-                                        variant="outline"
-                                        className="tooltip-button"
-                                      >
-                                        {language === "da"
-                                          ? "Vælg længde type"
-                                          : "Select length type"}
-                                      </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent>
-                                      {selectedSteelLengths.map(
-                                        (steelLength) => {
-                                          const checked =
-                                            selectedLengthTypeAssociations.some(
-                                              (lengthTypeAssociation) =>
-                                                lengthTypeAssociation.childId ===
-                                                  selectedSteelLengthElement.id &&
-                                                lengthTypeAssociation.parentId ===
-                                                  steelLength.id
-                                            );
-
-                                          return (
-                                            <DropdownMenuCheckboxItem
-                                              key={
-                                                steelLength.id +
-                                                selectedSteelLengthElement.id
-                                              }
-                                              checked={checked}
-                                              onCheckedChange={() => {
-                                                const currentAssociations: LengthTypeAssociations[] =
-                                                  structuredClone(
-                                                    selectedLengthTypeAssociations
-                                                  );
-                                                let newAssociations =
-                                                  currentAssociations.filter(
-                                                    (association) =>
-                                                      association.childId !==
-                                                      selectedSteelLengthElement.id
-                                                  );
-
-                                                if (!checked) {
-                                                  newAssociations = [
-                                                    ...newAssociations,
-                                                    {
-                                                      parentId: steelLength.id,
-                                                      childId:
-                                                        selectedSteelLengthElement.id,
-                                                    },
-                                                  ];
-                                                }
-
-                                                setSelectedLengthTypeAssociations(
-                                                  newAssociations
-                                                );
-                                              }}
-                                            >
-                                              {steelLength.name}
-                                            </DropdownMenuCheckboxItem>
-                                          );
-                                        }
-                                      )}
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
-                                </TableCell>
-                                <TableCell className="flex justify-end space-x-2">
-                                  <TooltipButton
-                                    disabled={calculating}
-                                    variant="destructive"
-                                    ButtonIcon={Trash}
-                                    text={language === "da" ? "Slet" : "Remove"}
-                                    onClick={() =>
-                                      removeSteelLengthElement(
-                                        selectedSteelLengthElement.id
-                                      )
-                                    }
-                                  />
-                                </TableCell>
-                              </TableRow>
-                            );
-                          }
-                        )}
-                      </TableBody>
-                    </Table>
+                          <Button
+                            className="w-[92%] tooltip-button"
+                            data-tooltip-variant={"default"}
+                            disabled={
+                              calculating ||
+                              selectedSteelLengths?.length === 0 ||
+                              selectedSteelLengthElements?.length === 0
+                            }
+                            onClick={() => getResults()}
+                          >
+                            {calculating ? (
+                              <Loader2Icon className="animate-spin" />
+                            ) : language === "da" ? (
+                              "Udregn nesting"
+                            ) : (
+                              "Calculate nesting"
+                            )}
+                          </Button>
+                        </div>
+                      )}
                   </div>
                 )}
-              </div>
-            </div>
-            <div className="flex-grow pl-4 pr-4 w-full sm:w-1/2">
-              {endResults.nestingParent.length !== 0 &&
-                selectedSteelLengthElements.length !== 0 &&
-                selectedSteelLengths.length !== 0 && (
-                  <ResultsCard language={language} endResults={endResults} />
-                )}
-              <>
-                {endResults.layouts.length > 0 && (
-                  <h2 className="text-xl font-semibold mb-2 pl-4 mt-4">
-                    {language === "da" ? "Visualiseret" : "Visualized"}
-                  </h2>
-                )}
 
-                {endResults.layouts.length > 0 &&
-                  (() => {
-                    const MAX_DIM = 500;
+              {selectedSteelLengthElements.length !== 0 && (
+                <div
+                  style={{ borderRadius: "10px" }}
+                  className="flex-grow overflow-auto p-4 bg-muted "
+                >
+                  <Table>
+                    <TableHeader className="top-0 bg-muted z-10">
+                      <TableRow className="text-xs sm:text-base">
+                        <TableHead>
+                          {language === "da" ? "Navn" : "Name"}
+                        </TableHead>
+                        <TableHead>
+                          {language === "da" ? "Længde (mm)" : "Length (mm)"}
+                        </TableHead>
 
-                    // 1) find the largest sheet in your result set
-                    const maxW = Math.max(
-                      ...endResults.layouts.map((l) => l.width)
-                    );
-                    const maxH = Math.max(
-                      ...endResults.layouts.map((l) => l.length)
-                    );
-
-                    // 2) one single global scale factor
-                    const globalScale = Math.min(
-                      MAX_DIM / maxW,
-                      MAX_DIM / maxH
-                    );
-
-                    return (
-                      <div
-                        style={{ borderRadius: "10px" }}
-                        className="flex mb-4 flex-wrap gap-4 overflow-auto p-4 bg-muted max-h-[calc(68vh)]"
-                      >
-                        {endResults.layouts.map((layout, i) => {
+                        <TableHead>
+                          {language === "da" ? "Antal" : "Quantity"}
+                        </TableHead>
+                        <TableHead>
+                          {language === "da" ? "Længde type" : "Length type"}
+                        </TableHead>
+                        <TableHead></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {selectedSteelLengthElements.map(
+                        (selectedSteelLengthElement) => {
+                          if (!selectedSteelLengthElement) return null;
                           return (
-                            <VisualisationCard
-                              key={layout.parentId + i}
-                              layout={layout}
-                              scaleFactor={globalScale}
-                              isLength
-                            />
+                            <TableRow
+                              className="text-xs sm:text-base"
+                              key={selectedSteelLengthElement.id}
+                            >
+                              <TableCell>
+                                {selectedSteelLengthElement.name}
+                              </TableCell>
+                              <TableCell>
+                                {formatEuropeanFloat(
+                                  selectedSteelLengthElement.length
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                <Input
+                                  className="max-w-20 text-xs sm:text-base"
+                                  placeholder={
+                                    language === "da" ? "Antal" : "Quantity"
+                                  }
+                                  type="number"
+                                  value={
+                                    quantities[selectedSteelLengthElement.id] ??
+                                    1
+                                  }
+                                  onChange={(e) =>
+                                    setQuantities((prev) => ({
+                                      ...prev,
+                                      [selectedSteelLengthElement.id]: parseInt(
+                                        e.target.value || "1"
+                                      ),
+                                    }))
+                                  }
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      className="tooltip-button"
+                                    >
+                                      {language === "da"
+                                        ? "Vælg længde type"
+                                        : "Select length type"}
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent>
+                                    {selectedSteelLengths.map((steelLength) => {
+                                      const checked =
+                                        selectedLengthTypeAssociations.some(
+                                          (lengthTypeAssociation) =>
+                                            lengthTypeAssociation.childId ===
+                                              selectedSteelLengthElement.id &&
+                                            lengthTypeAssociation.parentId ===
+                                              steelLength.id
+                                        );
+
+                                      return (
+                                        <DropdownMenuCheckboxItem
+                                          key={
+                                            steelLength.id +
+                                            selectedSteelLengthElement.id
+                                          }
+                                          checked={checked}
+                                          onCheckedChange={() => {
+                                            const currentAssociations: LengthTypeAssociations[] =
+                                              structuredClone(
+                                                selectedLengthTypeAssociations
+                                              );
+                                            let newAssociations =
+                                              currentAssociations.filter(
+                                                (association) =>
+                                                  association.childId !==
+                                                  selectedSteelLengthElement.id
+                                              );
+
+                                            if (!checked) {
+                                              newAssociations = [
+                                                ...newAssociations,
+                                                {
+                                                  parentId: steelLength.id,
+                                                  childId:
+                                                    selectedSteelLengthElement.id,
+                                                },
+                                              ];
+                                            }
+
+                                            setSelectedLengthTypeAssociations(
+                                              newAssociations
+                                            );
+                                          }}
+                                        >
+                                          {steelLength.name}
+                                        </DropdownMenuCheckboxItem>
+                                      );
+                                    })}
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </TableCell>
+                              <TableCell className="flex justify-end space-x-2">
+                                <TooltipButton
+                                  disabled={calculating}
+                                  variant="destructive"
+                                  ButtonIcon={Trash}
+                                  text={language === "da" ? "Slet" : "Remove"}
+                                  onClick={() =>
+                                    removeSteelLengthElement(
+                                      selectedSteelLengthElement.id
+                                    )
+                                  }
+                                />
+                              </TableCell>
+                            </TableRow>
                           );
-                        })}
-                      </div>
-                    );
-                  })()}
-              </>
+                        }
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
             </div>
           </div>
-        )}
-      </div>
-    </div>
+          <div className="flex-grow  w-full sm:w-1/2">
+            {endResults.nestingParent.length !== 0 &&
+              selectedSteelLengthElements.length !== 0 &&
+              selectedSteelLengths.length !== 0 && (
+                <ResultsCard language={language} endResults={endResults} />
+              )}
+            <>
+              {endResults.layouts.length > 0 && (
+                <h2 className="text-xl font-semibold mb-2 pl-4 mt-4">
+                  {language === "da" ? "Visualiseret" : "Visualized"}
+                </h2>
+              )}
+
+              {endResults.layouts.length > 0 &&
+                (() => {
+                  const MAX_DIM = 500;
+
+                  // 1) find the largest sheet in your result set
+                  const maxW = Math.max(
+                    ...endResults.layouts.map((l) => l.width)
+                  );
+                  const maxH = Math.max(
+                    ...endResults.layouts.map((l) => l.length)
+                  );
+
+                  // 2) one single global scale factor
+                  const globalScale = Math.min(MAX_DIM / maxW, MAX_DIM / maxH);
+
+                  return (
+                    <div
+                      style={{ borderRadius: "10px" }}
+                      className="flex mb-4 flex-wrap gap-4 overflow-auto p-4 bg-muted max-h-[calc(68vh)]"
+                    >
+                      {endResults.layouts.map((layout, i) => {
+                        return (
+                          <VisualisationCard
+                            key={layout.parentId + i}
+                            layout={layout}
+                            scaleFactor={globalScale}
+                            isLength
+                          />
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+            </>
+          </div>
+        </div>
+      )}
+    </PageLayout>
   );
 }
