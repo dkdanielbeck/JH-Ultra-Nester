@@ -105,14 +105,16 @@ export default function CalculateLengthNesting() {
         setSteelLengths(steelLengths);
         setSteelLengthElements(steelLengthElements);
         setSelectedSteelLengths(
-          (savedConfig?.selectedParents as SteelLength[]) ?? steelLengths
+          (savedConfigRef.current?.selectedParents as SteelLength[]) ??
+            steelLengths
         );
         setSelectedSteelLengthElements(
-          (savedConfig?.selectedElements as SteelLengthElement[]) ?? []
+          (savedConfigRef.current?.selectedElements as SteelLengthElement[]) ??
+            []
         );
         setSelectedLengthTypeAssociations(
-          (savedConfig?.lengthTypeAssociations as LengthTypeAssociations[]) ??
-            []
+          (savedConfigRef.current
+            ?.lengthTypeAssociations as LengthTypeAssociations[]) ?? []
         );
       } catch (err) {
         console.error("Failed to fetch items:", err);

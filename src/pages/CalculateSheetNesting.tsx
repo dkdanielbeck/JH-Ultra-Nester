@@ -97,13 +97,17 @@ export default function CalculateSheetNesting() {
         setSheets(sheets);
         setMachines(machines);
         setSheetElements(sheetElements);
-        setSelectedSheets((savedConfig?.selectedParents as Sheet[]) ?? sheets);
+        setSelectedSheets(
+          (savedConfigRef.current?.selectedParents as Sheet[]) ?? sheets
+        );
         setSelectedElements(
-          (savedConfig?.selectedElements as SheetElement[]) ?? []
+          (savedConfigRef.current?.selectedElements as SheetElement[]) ?? []
         );
         setSelectedProfile(() => {
-          if (savedConfig?.selectedProfileId) {
-            return machines.find((m) => m.id === savedConfig.selectedProfileId);
+          if (savedConfigRef.current?.selectedProfileId) {
+            return machines.find(
+              (m) => m.id === savedConfigRef.current?.selectedProfileId
+            );
           }
           return machines.find((m) => m.default);
         });
