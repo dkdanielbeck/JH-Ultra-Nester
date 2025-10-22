@@ -48,27 +48,7 @@ import PrivateRoute from "./components/my-components/PrivateRoute";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import SignIn from "./pages/SignIn";
-
-const STORAGE_KEY = "language";
-
-export function loadLanguage(): string {
-  try {
-    const languageString = localStorage.getItem(STORAGE_KEY);
-
-    return languageString ?? "en";
-  } catch (e) {
-    console.error("Failed to load language:", e);
-    return "en";
-  }
-}
-
-function saveLanguage(languageString: string) {
-  try {
-    localStorage.setItem(STORAGE_KEY, languageString);
-  } catch (e) {
-    console.error("Failed to save language:", e);
-  }
-}
+import { loadLanguage, saveLanguage } from "./lib/utils-local-storage";
 
 function App() {
   const [language, setLanguage] = useState<string>(() => loadLanguage());

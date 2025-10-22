@@ -1,17 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { loadLanguage } from "@/App";
 import {
   ComponentNames,
   InputFieldValues,
   ITEMTYPES,
   type SteelLength,
 } from "@/lib/types";
-import {
-  clearInputsFromLocalStorage,
-  loadInputFromLocalStorage,
-  saveInputToLocalStorage,
-} from "@/lib/utils-local-storage";
 import {
   deleteSteelLength,
   fetchSteelLengths,
@@ -31,42 +25,37 @@ import type { Row } from "@/components/my-components/DataTable";
 import DataTable from "@/components/my-components/DataTable";
 import ClearButton from "@/components/my-components/ClearButton";
 import AddButton from "@/components/my-components/AddButton";
+import PageLayout from "@/components/my-components/PageLayout";
 import SaveRowButton from "@/components/my-components/SaveRowButton";
 import EditRowButton from "@/components/my-components/EditRowButton";
 import RemoveRowButton from "@/components/my-components/RemoveRowButton";
+import { usePersistedInput } from "@/hooks/usePersistedInput";
+import { loadLanguage } from "@/lib/utils-local-storage";
 
 export default function MySteelLengths() {
   const [language] = useState<string>(() => loadLanguage());
 
   const [steelLengths, setSteelLengths] = useState<SteelLength[]>([]);
-  const [name, setName] = useState<string>(
-    () =>
-      loadInputFromLocalStorage(
-        InputFieldValues.name,
-        ComponentNames.mySteelLengths
-      ) || ""
-  );
-  const [length, setLength] = useState<string>(
-    () =>
-      loadInputFromLocalStorage(
-        InputFieldValues.length,
-        ComponentNames.mySteelLengths
-      ) || ""
-  );
-  const [price, setPrice] = useState<string>(
-    () =>
-      loadInputFromLocalStorage(
-        InputFieldValues.price,
-        ComponentNames.mySteelLengths
-      ) || ""
-  );
-  const [weight, setWeight] = useState<string>(
-    () =>
-      loadInputFromLocalStorage(
-        InputFieldValues.weight,
-        ComponentNames.mySteelLengths
-      ) || ""
-  );
+  const {
+    value: name,
+    setValue: setName,
+    clear: clearName,
+  } = usePersistedInput(InputFieldValues.name, ComponentNames.mySteelLengths);
+  const {
+    value: length,
+    setValue: setLength,
+    clear: clearLength,
+  } = usePersistedInput(InputFieldValues.length, ComponentNames.mySteelLengths);
+  const {
+    value: price,
+    setValue: setPrice,
+    clear: clearPrice,
+  } = usePersistedInput(InputFieldValues.price, ComponentNames.mySteelLengths);
+  const {
+    value: weight,
+    setValue: setWeight,
+    clear: clearWeight,
+  } = usePersistedInput(InputFieldValues.weight, ComponentNames.mySteelLengths);
   const [editedName, setEditedName] = useState<string>("");
   const [editedLength, setEditedLength] = useState<string>("");
   const [editedPrice, setEditedPrice] = useState<string>("");
@@ -106,33 +95,15 @@ export default function MySteelLengths() {
     setPrice("");
     setWeight("");
     setLength("");
-    clearInputsFromLocalStorage(
-      [
-        InputFieldValues.name,
-        InputFieldValues.length,
-        InputFieldValues.price,
-        InputFieldValues.weight,
-      ],
-      ComponentNames.mySteelLengths
-    );
   };
   const clearInputs = () => {
-    setName("");
-    setLength("");
-    setPrice("");
-    setWeight("");
-    clearInputsFromLocalStorage(
-      [
-        InputFieldValues.name,
-        InputFieldValues.length,
-        InputFieldValues.price,
-        InputFieldValues.weight,
-      ],
-      ComponentNames.mySteelLengths
-    );
+    clearName();
+    clearLength();
+    clearPrice();
+    clearWeight();
   };
 
-  const SaveEditedSteelLength = async () => {
+  const SaveEditedSteelLength = useCallback(async () => {
     const newSteelLength = {
       name: editedName,
       width: 200,
@@ -155,7 +126,14 @@ export default function MySteelLengths() {
     setEditedWeight("");
     setEditedLength("");
     setBeingEdited("");
-  };
+  }, [
+    beingEdited,
+    editedLength,
+    editedName,
+    editedPrice,
+    editedWeight,
+    steelLengths,
+  ]);
 
   const rows: Row[] = useMemo(() => {
     return steelLengths.map((steelLength) => {
@@ -278,6 +256,7 @@ export default function MySteelLengths() {
     editedWeight,
     editedName,
     editedPrice,
+    SaveEditedSteelLength,
   ]);
 
   const headers = [
@@ -306,16 +285,14 @@ export default function MySteelLengths() {
   ];
 
   return (
-    <div className="flex flex-col max-h-[calc(100vh-100px)]">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold mb-4">
-          {language === "da" ? "Mine stål længder" : "My steel Lengths"}
-        </h1>
-        <p className="mb-4">
-          {language === "da"
-            ? "På denne side kan du tilføje stål længder som du kontinuerligt kan genbruge når du udregner nesting."
-            : "On this page you can add steel lengths that you can continuously reuse when calculating nestings."}
-        </p>
+    <PageLayout
+      title={language === "da" ? "Mine stål længder" : "My steel Lengths"}
+      description={
+        language === "da"
+          ? "På denne side kan du tilføje stål længder som du kontinuerligt kan genbruge når du udregner nesting."
+          : "On this page you can add steel lengths that you can continuously reuse when calculating nestings."
+      }
+      inputContent={
         <div className="flex flex-col sm:flex-row gap-2 sm:items-end pt-8">
           <InputField
             label={language === "da" ? "Stål længde navn" : "Steel length name"}
@@ -324,14 +301,7 @@ export default function MySteelLengths() {
               language === "da" ? "f.eks. Fladstål 40x5" : "e.g. Flat bar 40x5"
             }
             value={name}
-            onChange={(event) => {
-              setName(event.target.value);
-              saveInputToLocalStorage(
-                InputFieldValues.name,
-                event.target.value,
-                ComponentNames.mySteelLengths
-              );
-            }}
+            onChange={(event) => setName(event.target.value)}
           />
 
           <InputField
@@ -340,14 +310,7 @@ export default function MySteelLengths() {
             placeholder={language === "da" ? "f.eks. 6000" : "e.g. 6000"}
             number
             value={length}
-            onChange={(event) => {
-              setLength(event.target.value);
-              saveInputToLocalStorage(
-                InputFieldValues.length,
-                event.target.value,
-                ComponentNames.mySteelLengths
-              );
-            }}
+            onChange={(event) => setLength(event.target.value)}
           />
 
           <InputField
@@ -356,14 +319,7 @@ export default function MySteelLengths() {
             placeholder={language === "da" ? "f.eks. 24,5" : "e.g. 24.5"}
             number
             value={price}
-            onChange={(event) => {
-              setPrice(event.target.value);
-              saveInputToLocalStorage(
-                InputFieldValues.price,
-                event.target.value,
-                ComponentNames.mySteelLengths
-              );
-            }}
+            onChange={(event) => setPrice(event.target.value)}
           />
 
           <InputField
@@ -372,14 +328,7 @@ export default function MySteelLengths() {
             placeholder={language === "da" ? "f.eks. 57" : "e.g. 57"}
             number
             value={weight}
-            onChange={(event) => {
-              setWeight(event.target.value);
-              saveInputToLocalStorage(
-                InputFieldValues.weight,
-                event.target.value,
-                ComponentNames.mySteelLengths
-              );
-            }}
+            onChange={(event) => setWeight(event.target.value)}
           />
 
           <ClearButton
@@ -405,8 +354,8 @@ export default function MySteelLengths() {
             onClick={addNewSteelLength}
           />
         </div>
-      </div>
-
+      }
+    >
       {loading && <TableSkeleton />}
       {!loading && rows.length === 0 && (
         <EmptyStateLine language={language} type={ITEMTYPES.SteelLength} />
@@ -419,6 +368,6 @@ export default function MySteelLengths() {
           <DataTable rows={rows} headers={headers} />
         </div>
       )}
-    </div>
+    </PageLayout>
   );
 }

@@ -32,7 +32,7 @@ export function packOneSheet(
       (el.length <= usableW && el.width <= usableH)
   );
   if (pool.length === 0) {
-    // @ts-ignore
+    //@ts-expect-error type mismatch but below object is as it should be
     return { bins: [] };
   }
 
@@ -116,7 +116,7 @@ export function findBest(
   }
 
   const memoKey = elements
-    .map((el: any) => el.instanceId ?? el.id)
+    .map((el) => el.instanceId ?? el.id)
     .sort()
     .join("|");
   const cached = memory.get(memoKey);
@@ -167,7 +167,7 @@ export function findBest(
         const thisLayoutRects: PlacedRect[] = rects.map((r) => {
           const el = r.data as SheetElement;
           // Mark as placed (object identity if present, else by id)
-          placedNow.add((el as any).instanceId ?? el.id);
+          placedNow.add(el.instanceId ?? el.id);
 
           return {
             element: el,
@@ -197,7 +197,7 @@ export function findBest(
       // Build remaining list (respect possible duplicate ids via instanceId)
       const remaining: AnyElement[] = [];
       for (const element of elements as AnyElement[]) {
-        const instanceOrId = (element as any).instanceId ?? element.id;
+        const instanceOrId = element.instanceId ?? element.id;
         if (!placedNow.has(instanceOrId)) remaining.push(element);
       }
 

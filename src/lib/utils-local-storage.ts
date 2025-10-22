@@ -1,6 +1,14 @@
-import type { ComponentName, InputField, SavedNestingConfiguration, StorageKeyMap } from "./types";
+import type {
+  ComponentName,
+  InputField,
+  SavedNestingConfiguration,
+  StorageKeyMap,
+} from "./types";
 
-export function saveItemsToLocalStorage<StorageKey extends keyof StorageKeyMap>(storageKey: StorageKey, list: StorageKeyMap[StorageKey]) {
+export function saveItemsToLocalStorage<StorageKey extends keyof StorageKeyMap>(
+  storageKey: StorageKey,
+  list: StorageKeyMap[StorageKey]
+) {
   try {
     localStorage.setItem(storageKey, JSON.stringify(list));
   } catch (e) {
@@ -8,7 +16,9 @@ export function saveItemsToLocalStorage<StorageKey extends keyof StorageKeyMap>(
   }
 }
 
-export function loadItemsFromLocalStorage<StorageKey extends keyof StorageKeyMap>(storageKey: StorageKey): StorageKeyMap[StorageKey] {
+export function loadItemsFromLocalStorage<
+  StorageKey extends keyof StorageKeyMap
+>(storageKey: StorageKey): StorageKeyMap[StorageKey] {
   try {
     const raw = localStorage.getItem(storageKey);
     return raw ? JSON.parse(raw) : [];
@@ -18,21 +28,34 @@ export function loadItemsFromLocalStorage<StorageKey extends keyof StorageKeyMap
   }
 }
 
-export function saveInputToLocalStorage(field: InputField, value: string, component: ComponentName) {
+export function saveInputToLocalStorage(
+  field: InputField,
+  value: string,
+  component: ComponentName
+) {
   localStorage.setItem(`${component}-${field}`, value);
 }
 
-export function clearInputsFromLocalStorage(fields: InputField[], component: ComponentName) {
+export function clearInputsFromLocalStorage(
+  fields: InputField[],
+  component: ComponentName
+) {
   for (const field of fields) {
     localStorage.removeItem(`${component}-${field}`);
   }
 }
 
-export function loadInputFromLocalStorage(field: InputField, component: ComponentName): string {
+export function loadInputFromLocalStorage(
+  field: InputField,
+  component: ComponentName
+): string {
   return localStorage.getItem(`${component}-${field}`) || "";
 }
 
-export function saveNestingConfigurationToLocalStorage(config: SavedNestingConfiguration, component: ComponentName) {
+export function saveNestingConfigurationToLocalStorage(
+  config: SavedNestingConfiguration,
+  component: ComponentName
+) {
   try {
     localStorage.setItem(component, JSON.stringify(config));
   } catch (error) {
@@ -40,12 +63,35 @@ export function saveNestingConfigurationToLocalStorage(config: SavedNestingConfi
   }
 }
 
-export function loadNestingConfigurationFromLocalStorage(component: ComponentName): SavedNestingConfiguration | null {
+export function loadNestingConfigurationFromLocalStorage(
+  component: ComponentName
+): SavedNestingConfiguration | null {
   try {
     const data = localStorage.getItem(component);
     return data ? JSON.parse(data) : null;
   } catch (error) {
     console.error("Failed to load nesting configuration:", error);
     return null;
+  }
+}
+
+const STORAGE_KEY = "language";
+
+export function loadLanguage(): string {
+  try {
+    const languageString = localStorage.getItem(STORAGE_KEY);
+
+    return languageString ?? "en";
+  } catch (e) {
+    console.error("Failed to load language:", e);
+    return "en";
+  }
+}
+
+export function saveLanguage(languageString: string) {
+  try {
+    localStorage.setItem(STORAGE_KEY, languageString);
+  } catch (e) {
+    console.error("Failed to save language:", e);
   }
 }

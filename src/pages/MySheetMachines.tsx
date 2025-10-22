@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { loadLanguage } from "@/App";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   ComponentNames,
@@ -8,11 +7,6 @@ import {
   ITEMTYPES,
   type Machine,
 } from "@/lib/types";
-import {
-  clearInputsFromLocalStorage,
-  loadInputFromLocalStorage,
-  saveInputToLocalStorage,
-} from "@/lib/utils-local-storage";
 import {
   deleteMachine,
   fetchMachines,
@@ -31,32 +25,32 @@ import type { Row } from "@/components/my-components/DataTable";
 import DataTable from "@/components/my-components/DataTable";
 import AddButton from "@/components/my-components/AddButton";
 import ClearButton from "@/components/my-components/ClearButton";
+import PageLayout from "@/components/my-components/PageLayout";
 import SaveRowButton from "@/components/my-components/SaveRowButton";
 import EditRowButton from "@/components/my-components/EditRowButton";
 import RemoveRowButton from "@/components/my-components/RemoveRowButton";
+import { usePersistedInput } from "@/hooks/usePersistedInput";
+import { loadLanguage } from "@/lib/utils-local-storage";
 
 export default function MySheetMachines() {
   const [language] = useState<string>(() => loadLanguage());
 
   const [machines, setMachines] = useState<Machine[]>([]);
-  const [name, setName] = useState(
-    loadInputFromLocalStorage(
-      InputFieldValues.name,
-      ComponentNames.myMachines
-    ) || ""
-  );
-  const [border, setBorder] = useState(
-    loadInputFromLocalStorage(
-      InputFieldValues.border,
-      ComponentNames.myMachines
-    ) || ""
-  );
-  const [margin, setMargin] = useState(
-    loadInputFromLocalStorage(
-      InputFieldValues.margin,
-      ComponentNames.myMachines
-    ) || ""
-  );
+  const {
+    value: name,
+    setValue: setName,
+    clear: clearName,
+  } = usePersistedInput(InputFieldValues.name, ComponentNames.myMachines);
+  const {
+    value: border,
+    setValue: setBorder,
+    clear: clearBorder,
+  } = usePersistedInput(InputFieldValues.border, ComponentNames.myMachines);
+  const {
+    value: margin,
+    setValue: setMargin,
+    clear: clearMargin,
+  } = usePersistedInput(InputFieldValues.margin, ComponentNames.myMachines);
   const [editedName, setEditedName] = useState<string>("");
   const [editedBorder, setEditedBorder] = useState<string>("");
   const [editedMargin, setEditedMargin] = useState<string>("");
@@ -95,23 +89,15 @@ export default function MySheetMachines() {
     setName("");
     setBorder("");
     setMargin("");
-    clearInputsFromLocalStorage(
-      [InputFieldValues.name, InputFieldValues.border, InputFieldValues.margin],
-      ComponentNames.myMachines
-    );
   };
 
   const clearInputs = () => {
-    setName("");
-    setBorder("");
-    setMargin("");
-    clearInputsFromLocalStorage(
-      [InputFieldValues.name, InputFieldValues.border, InputFieldValues.margin],
-      ComponentNames.myMachines
-    );
+    clearName();
+    clearBorder();
+    clearMargin();
   };
 
-  const SaveEditedMachine = async () => {
+  const SaveEditedMachine = useCallback(async () => {
     const editedMachine = machines.find(
       (machine) => machine.id === beingEdited
     );
@@ -135,53 +121,59 @@ export default function MySheetMachines() {
     setEditedMargin("");
     setEditedBorder("");
     setBeingEdited("");
-  };
+  }, [beingEdited, editedBorder, editedMargin, editedName, machines]);
 
-  const setDefault = async (machineId: string) => {
-    const currentDefault = machines.find((m) => m.default);
-    const targetMachine = machines.find((m) => m.id === machineId);
+  const setDefault = useCallback(
+    async (machineId: string) => {
+      const currentDefault = machines.find((m) => m.default);
+      const targetMachine = machines.find((m) => m.id === machineId);
 
-    if (!targetMachine || targetMachine.default) return;
+      if (!targetMachine || targetMachine.default) return;
 
-    const updates: Promise<void>[] = [];
+      const updates: Promise<void>[] = [];
 
-    if (currentDefault && currentDefault.id !== machineId) {
-      updates.push(updateMachine(currentDefault.id, { default: false }));
-    }
-
-    updates.push(updateMachine(machineId, { default: true }));
-
-    await Promise.all(updates);
-
-    const updatedMachines = machines.map((machine) => {
-      if (machine.id === machineId) {
-        return { ...machine, default: true };
-      } else if (machine.default) {
-        return { ...machine, default: false };
-      } else {
-        return machine;
+      if (currentDefault && currentDefault.id !== machineId) {
+        updates.push(updateMachine(currentDefault.id, { default: false }));
       }
-    });
 
-    setMachines(updatedMachines);
-  };
+      updates.push(updateMachine(machineId, { default: true }));
 
-  const setOnlyStraightCuts = async (machineId: string) => {
-    const targetMachine = machines.find((m) => m.id === machineId);
-    if (!targetMachine) return;
+      await Promise.all(updates);
 
-    const newStraightCutsValue = !targetMachine.straightCuts;
+      const updatedMachines = machines.map((machine) => {
+        if (machine.id === machineId) {
+          return { ...machine, default: true };
+        } else if (machine.default) {
+          return { ...machine, default: false };
+        } else {
+          return machine;
+        }
+      });
 
-    await updateMachine(machineId, { straightCuts: newStraightCutsValue });
+      setMachines(updatedMachines);
+    },
+    [machines]
+  );
 
-    const updatedMachines = machines.map((machine) =>
-      machine.id === machineId
-        ? { ...machine, straightCuts: newStraightCutsValue }
-        : machine
-    );
+  const setOnlyStraightCuts = useCallback(
+    async (machineId: string) => {
+      const targetMachine = machines.find((m) => m.id === machineId);
+      if (!targetMachine) return;
 
-    setMachines(updatedMachines);
-  };
+      const newStraightCutsValue = !targetMachine.straightCuts;
+
+      await updateMachine(machineId, { straightCuts: newStraightCutsValue });
+
+      const updatedMachines = machines.map((machine) =>
+        machine.id === machineId
+          ? { ...machine, straightCuts: newStraightCutsValue }
+          : machine
+      );
+
+      setMachines(updatedMachines);
+    },
+    [machines]
+  );
 
   const rows: Row[] = useMemo(() => {
     return machines.map((machine) => {
@@ -297,7 +289,17 @@ export default function MySheetMachines() {
         ],
       };
     });
-  }, [machines, beingEdited, language, editedName, editedBorder, editedMargin]);
+  }, [
+    machines,
+    beingEdited,
+    language,
+    editedName,
+    editedBorder,
+    editedMargin,
+    SaveEditedMachine,
+    setDefault,
+    setOnlyStraightCuts,
+  ]);
 
   const headers = [
     {
@@ -329,32 +331,23 @@ export default function MySheetMachines() {
   ];
 
   return (
-    <div className="flex flex-col max-h-[calc(100vh-100px)]">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold mb-4">
-          {language === "da" ? "Mine plade maskiner" : "My machine machines"}
-        </h1>
-        <p className="mb-4">
-          {language === "da"
-            ? "På denne side kan du tilføje maskiner med tilhørende margen og kant som du kontinuerligt kan genbruge når du udregner nesting"
-            : "On this page you can add machines with defined margin and border that you can continuously reuse when calculating nestings."}
-        </p>
+    <PageLayout
+      title={language === "da" ? "Mine plade maskiner" : "My machine machines"}
+      description={
+        language === "da"
+          ? "På denne side kan du tilføje maskiner med tilhørende margen og kant som du kontinuerligt kan genbruge når du udregner nesting"
+          : "On this page you can add machines with defined margin and border that you can continuously reuse when calculating nestings."
+      }
+      inputContent={
         <div className="flex flex-col sm:flex-row gap-2 sm:items-end pt-8">
           <InputField
-            label={language === "da" ? "Maskine navn" : "Machine name"}
+            label={language === "da" ? "Navn" : "Name"}
             id="machineName"
             placeholder={
-              language === "da" ? "f.eks. Laser cutter" : "e.g. Laserskærer"
+              language === "da" ? "f.eks. Fiberlaser" : "e.g. Fiber laser"
             }
             value={name}
-            onChange={(event) => {
-              setName(event.target.value);
-              saveInputToLocalStorage(
-                InputFieldValues.name,
-                event.target.value,
-                ComponentNames.myMachines
-              );
-            }}
+            onChange={(event) => setName(event.target.value)}
           />
 
           <InputField
@@ -363,14 +356,7 @@ export default function MySheetMachines() {
             placeholder={language === "da" ? "f.eks. 10" : "e.g. 10"}
             number
             value={margin}
-            onChange={(event) => {
-              setMargin(event.target.value);
-              saveInputToLocalStorage(
-                InputFieldValues.margin,
-                event.target.value,
-                ComponentNames.myMachines
-              );
-            }}
+            onChange={(event) => setMargin(event.target.value)}
           />
 
           <InputField
@@ -379,14 +365,7 @@ export default function MySheetMachines() {
             placeholder={language === "da" ? "f.eks. 5" : "e.g. 5"}
             number
             value={border}
-            onChange={(event) => {
-              setBorder(event.target.value);
-              saveInputToLocalStorage(
-                InputFieldValues.border,
-                event.target.value,
-                ComponentNames.myMachines
-              );
-            }}
+            onChange={(event) => setBorder(event.target.value)}
           />
 
           <ClearButton
@@ -405,7 +384,8 @@ export default function MySheetMachines() {
             onClick={addNewMachine}
           />
         </div>
-      </div>
+      }
+    >
       {loading && <TableSkeleton />}
       {!loading && rows.length === 0 && (
         <EmptyStateLine language={language} type={ITEMTYPES.Machine} />
@@ -418,6 +398,6 @@ export default function MySheetMachines() {
           <DataTable rows={rows} headers={headers} />
         </div>
       )}
-    </div>
+    </PageLayout>
   );
 }

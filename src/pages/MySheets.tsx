@@ -1,17 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { loadLanguage } from "@/App";
 import {
   ComponentNames,
   InputFieldValues,
   ITEMTYPES,
   type Sheet,
 } from "@/lib/types";
-import {
-  clearInputsFromLocalStorage,
-  loadInputFromLocalStorage,
-  saveInputToLocalStorage,
-} from "@/lib/utils-local-storage";
 import {
   deleteSheet,
   fetchSheets,
@@ -33,47 +27,40 @@ import AddButton from "@/components/my-components/AddButton";
 import SaveRowButton from "@/components/my-components/SaveRowButton";
 import EditRowButton from "@/components/my-components/EditRowButton";
 import RemoveRowButton from "@/components/my-components/RemoveRowButton";
+import PageLayout from "@/components/my-components/PageLayout";
+import { usePersistedInput } from "@/hooks/usePersistedInput";
+import { loadLanguage } from "@/lib/utils-local-storage";
 
 export default function MySheets() {
   const [language] = useState<string>(() => loadLanguage());
 
   const [sheets, setSheets] = useState<Sheet[]>([]);
 
-  const [name, setName] = useState<string>(
-    () =>
-      loadInputFromLocalStorage(
-        InputFieldValues.name,
-        ComponentNames.mySheets
-      ) || ""
-  );
-  const [width, setWidth] = useState<string>(
-    () =>
-      loadInputFromLocalStorage(
-        InputFieldValues.width,
-        ComponentNames.mySheets
-      ) || ""
-  );
-  const [price, setPrice] = useState<string>(
-    () =>
-      loadInputFromLocalStorage(
-        InputFieldValues.price,
-        ComponentNames.mySheets
-      ) || ""
-  );
-  const [weight, setWeight] = useState<string>(
-    () =>
-      loadInputFromLocalStorage(
-        InputFieldValues.weight,
-        ComponentNames.mySheets
-      ) || ""
-  );
-  const [length, setLength] = useState<string>(
-    () =>
-      loadInputFromLocalStorage(
-        InputFieldValues.length,
-        ComponentNames.mySheets
-      ) || ""
-  );
+  const {
+    value: name,
+    setValue: setName,
+    clear: clearName,
+  } = usePersistedInput(InputFieldValues.name, ComponentNames.mySheets);
+  const {
+    value: width,
+    setValue: setWidth,
+    clear: clearWidth,
+  } = usePersistedInput(InputFieldValues.width, ComponentNames.mySheets);
+  const {
+    value: price,
+    setValue: setPrice,
+    clear: clearPrice,
+  } = usePersistedInput(InputFieldValues.price, ComponentNames.mySheets);
+  const {
+    value: weight,
+    setValue: setWeight,
+    clear: clearWeight,
+  } = usePersistedInput(InputFieldValues.weight, ComponentNames.mySheets);
+  const {
+    value: length,
+    setValue: setLength,
+    clear: clearLength,
+  } = usePersistedInput(InputFieldValues.length, ComponentNames.mySheets);
   const [editedName, setEditedName] = useState<string>("");
   const [loading, setIsLoading] = useState<boolean>(false);
   const [editedWidth, setEditedWidth] = useState<string>("");
@@ -113,37 +100,17 @@ export default function MySheets() {
     setPrice("");
     setWeight("");
     setLength("");
-    clearInputsFromLocalStorage(
-      [
-        InputFieldValues.name,
-        InputFieldValues.width,
-        InputFieldValues.length,
-        InputFieldValues.weight,
-        InputFieldValues.price,
-      ],
-      ComponentNames.mySheets
-    );
   };
 
   const clearInputs = () => {
-    setName("");
-    setWidth("");
-    setPrice("");
-    setWeight("");
-    setLength("");
-    clearInputsFromLocalStorage(
-      [
-        InputFieldValues.name,
-        InputFieldValues.width,
-        InputFieldValues.length,
-        InputFieldValues.weight,
-        InputFieldValues.price,
-      ],
-      ComponentNames.mySheets
-    );
+    clearName();
+    clearWidth();
+    clearPrice();
+    clearWeight();
+    clearLength();
   };
 
-  const SaveEditedSheet = async () => {
+  const SaveEditedSheet = useCallback(async () => {
     const newSheet = {
       name: editedName,
       width: parseEuropeanFloat(editedWidth),
@@ -166,7 +133,15 @@ export default function MySheets() {
     setEditedWeight("");
     setEditedLength("");
     setBeingEdited("");
-  };
+  }, [
+    beingEdited,
+    editedLength,
+    editedName,
+    editedPrice,
+    editedWeight,
+    editedWidth,
+    sheets,
+  ]);
 
   const rows: Row[] = useMemo(() => {
     return sheets.map((sheet) => {
@@ -299,6 +274,7 @@ export default function MySheets() {
     editedName,
     editedPrice,
     editedWidth,
+    SaveEditedSheet,
   ]);
 
   const headers = [
@@ -331,16 +307,14 @@ export default function MySheets() {
   ];
 
   return (
-    <div className="flex flex-col max-h-[calc(100vh-100px)]">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold mb-4">
-          {language === "da" ? "Mine plader" : "My sheets"}
-        </h1>
-        <p className="mb-4">
-          {language === "da"
-            ? "På denne side kan du tilføje plader som du kontinuerligt kan genbruge når du udregner nesting. Vær opmærksom på at Længde altid vil ende med at være det største tal"
-            : "On this page you can add sheets that you can continuously reuse when calculating nestings. Take note that Length will always end up the bigger number"}
-        </p>
+    <PageLayout
+      title={language === "da" ? "Mine plader" : "My sheets"}
+      description={
+        language === "da"
+          ? "På denne side kan du tilføje plader som du kontinuerligt kan genbruge når du udregner nesting. Vær opmærksom på at Længde altid vil ende med at være det største tal"
+          : "On this page you can add sheets that you can continuously reuse when calculating nestings. Take note that Length will always end up the bigger number"
+      }
+      inputContent={
         <div className="flex flex-col sm:flex-row gap-2 sm:items-end pt-8">
           <InputField
             label={language === "da" ? "Navn" : "Name"}
@@ -351,14 +325,7 @@ export default function MySheets() {
                 : "e.g. Standard, Mini"
             }
             value={name}
-            onChange={(e) => {
-              setName(e.target.value);
-              saveInputToLocalStorage(
-                InputFieldValues.name,
-                e.target.value,
-                ComponentNames.mySheets
-              );
-            }}
+            onChange={(e) => setName(e.target.value)}
           />
 
           <InputField
@@ -367,14 +334,7 @@ export default function MySheets() {
             placeholder={language === "da" ? "f.eks. 2000" : "e.g. 2000"}
             number
             value={length}
-            onChange={(e) => {
-              setLength(e.target.value);
-              saveInputToLocalStorage(
-                InputFieldValues.length,
-                e.target.value,
-                ComponentNames.mySheets
-              );
-            }}
+            onChange={(e) => setLength(e.target.value)}
           />
 
           <InputField
@@ -383,14 +343,7 @@ export default function MySheets() {
             placeholder={language === "da" ? "f.eks. 1000" : "e.g. 1000"}
             number
             value={width}
-            onChange={(e) => {
-              setWidth(e.target.value);
-              saveInputToLocalStorage(
-                InputFieldValues.width,
-                e.target.value,
-                ComponentNames.mySheets
-              );
-            }}
+            onChange={(e) => setWidth(e.target.value)}
           />
 
           <InputField
@@ -399,14 +352,7 @@ export default function MySheets() {
             placeholder={language === "da" ? "f.eks. 24,5" : "e.g. 24.5"}
             number
             value={price}
-            onChange={(e) => {
-              setPrice(e.target.value);
-              saveInputToLocalStorage(
-                InputFieldValues.price,
-                e.target.value,
-                ComponentNames.mySheets
-              );
-            }}
+            onChange={(e) => setPrice(e.target.value)}
           />
 
           <InputField
@@ -415,14 +361,7 @@ export default function MySheets() {
             placeholder={language === "da" ? "f.eks. 57" : "e.g. 57"}
             number
             value={weight}
-            onChange={(e) => {
-              setWeight(e.target.value);
-              saveInputToLocalStorage(
-                InputFieldValues.weight,
-                e.target.value,
-                ComponentNames.mySheets
-              );
-            }}
+            onChange={(e) => setWeight(e.target.value)}
           />
 
           <ClearButton
@@ -451,7 +390,8 @@ export default function MySheets() {
             onClick={addSheet}
           />
         </div>
-      </div>
+      }
+    >
       {loading && <TableSkeleton />}
       {!loading && rows.length === 0 && (
         <EmptyStateLine language={language} type={ITEMTYPES.Sheet} />
@@ -464,6 +404,6 @@ export default function MySheets() {
           <DataTable rows={rows} headers={headers} />
         </div>
       )}
-    </div>
+    </PageLayout>
   );
 }

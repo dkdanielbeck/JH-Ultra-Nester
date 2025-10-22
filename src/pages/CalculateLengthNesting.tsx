@@ -1,4 +1,3 @@
-import { loadLanguage } from "@/App";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +19,7 @@ import {
   type LengthTypeAssociations,
 } from "@/lib/types";
 import {
+  loadLanguage,
   loadNestingConfigurationFromLocalStorage,
   saveNestingConfigurationToLocalStorage,
 } from "@/lib/utils-local-storage";
@@ -117,7 +117,7 @@ export default function CalculateLengthNesting() {
     };
 
     loadItems();
-  }, []);
+  }, [savedConfig]);
 
   const toggleSteelElementSelection = (
     steelLengthElement: SteelLengthElement

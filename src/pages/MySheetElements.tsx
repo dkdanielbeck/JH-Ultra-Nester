@@ -1,17 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { loadLanguage } from "@/App";
 import {
   ComponentNames,
   InputFieldValues,
   ITEMTYPES,
   type SheetElement,
 } from "@/lib/types";
-import {
-  clearInputsFromLocalStorage,
-  loadInputFromLocalStorage,
-  saveInputToLocalStorage,
-} from "@/lib/utils-local-storage";
 import {
   deleteSheetElement,
   fetchSheetElements,
@@ -33,31 +27,31 @@ import AddButton from "@/components/my-components/AddButton";
 import SaveRowButton from "@/components/my-components/SaveRowButton";
 import EditRowButton from "@/components/my-components/EditRowButton";
 import RemoveRowButton from "@/components/my-components/RemoveRowButton";
+import PageLayout from "@/components/my-components/PageLayout";
+import { usePersistedInput } from "@/hooks/usePersistedInput";
+import { loadLanguage } from "@/lib/utils-local-storage";
 
 export default function MySheetElements() {
   const [language] = useState<string>(() => loadLanguage());
 
   const [sheetElements, setSheetElements] = useState<SheetElement[]>([]);
-  const [name, setName] = useState<string>(
-    () =>
-      loadInputFromLocalStorage(
-        InputFieldValues.name,
-        ComponentNames.mySheetElements
-      ) || ""
-  );
-  const [width, setWidth] = useState<string>(
-    () =>
-      loadInputFromLocalStorage(
-        InputFieldValues.width,
-        ComponentNames.mySheetElements
-      ) || ""
-  );
-  const [length, setLength] = useState<string>(
-    () =>
-      loadInputFromLocalStorage(
-        InputFieldValues.length,
-        ComponentNames.mySheetElements
-      ) || ""
+  const {
+    value: name,
+    setValue: setName,
+    clear: clearName,
+  } = usePersistedInput(InputFieldValues.name, ComponentNames.mySheetElements);
+  const {
+    value: width,
+    setValue: setWidth,
+    clear: clearWidth,
+  } = usePersistedInput(InputFieldValues.width, ComponentNames.mySheetElements);
+  const {
+    value: length,
+    setValue: setLength,
+    clear: clearLength,
+  } = usePersistedInput(
+    InputFieldValues.length,
+    ComponentNames.mySheetElements
   );
 
   const [editedName, setEditedName] = useState<string>("");
@@ -95,22 +89,14 @@ export default function MySheetElements() {
     setName("");
     setWidth("");
     setLength("");
-    clearInputsFromLocalStorage(
-      [InputFieldValues.name, InputFieldValues.width, InputFieldValues.length],
-      ComponentNames.mySheetElements
-    );
   };
   const clearInputs = () => {
-    setName("");
-    setWidth("");
-    setLength("");
-    clearInputsFromLocalStorage(
-      [InputFieldValues.name, InputFieldValues.width, InputFieldValues.length],
-      ComponentNames.mySheetElements
-    );
+    clearName();
+    clearWidth();
+    clearLength();
   };
 
-  const SaveEditedSheetElement = async () => {
+  const SaveEditedSheetElement = useCallback(async () => {
     const newSheetElement = {
       name: editedName,
       width: parseEuropeanFloat(editedWidth),
@@ -131,7 +117,7 @@ export default function MySheetElements() {
     setEditedWidth("");
     setEditedLength("");
     setBeingEdited("");
-  };
+  }, [beingEdited, editedLength, editedName, editedWidth, sheetElements]);
 
   const rows: Row[] = useMemo(() => {
     return sheetElements.map((sheetElement) => {
@@ -236,6 +222,7 @@ export default function MySheetElements() {
     editedLength,
     editedName,
     editedWidth,
+    SaveEditedSheetElement,
   ]);
 
   const headers = [
@@ -259,30 +246,23 @@ export default function MySheetElements() {
   ];
 
   return (
-    <div className="flex flex-col max-h-[calc(100vh-100px)]">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold mb-4">
-          {language === "da" ? "Mine plade emner" : "My sheetElement elements"}
-        </h1>
-        <p className="mb-4">
-          {language === "da"
-            ? "På denne side kan du tilføje plade emner som du kontinuerligt kan genbruge når du udregner nesting. Vær opmærksom på at Længde altid vil ende med at være det største tal"
-            : "On this page you can add sheetElement elements that you can continuously reuse when calculating nestings. Take note that Length will always end up the bigger number"}
-        </p>
+    <PageLayout
+      title={
+        language === "da" ? "Mine plade emner" : "My sheetElement elements"
+      }
+      description={
+        language === "da"
+          ? "På denne side kan du tilføje plade emner som du kontinuerligt kan genbruge når du udregner nesting. Vær opmærksom på at Længde altid vil ende med at være det største tal"
+          : "On this page you can add sheetElement elements that you can continuously reuse when calculating nestings. Take note that Length will always end up the bigger number"
+      }
+      inputContent={
         <div className="flex flex-col sm:flex-row gap-2 sm:items-end pt-8">
           <InputField
             label={language === "da" ? "Plade emne navn" : "Sheet element name"}
             id="sheetElementName"
             placeholder={language === "da" ? "f.eks. Emne A" : "e.g. Part A"}
             value={name}
-            onChange={(event) => {
-              setName(event.target.value);
-              saveInputToLocalStorage(
-                InputFieldValues.name,
-                event.target.value,
-                ComponentNames.mySheetElements
-              );
-            }}
+            onChange={(event) => setName(event.target.value)}
           />
 
           <InputField
@@ -291,14 +271,7 @@ export default function MySheetElements() {
             placeholder={language === "da" ? "f.eks. 200" : "e.g. 200"}
             number
             value={length}
-            onChange={(event) => {
-              setLength(event.target.value);
-              saveInputToLocalStorage(
-                InputFieldValues.length,
-                event.target.value,
-                ComponentNames.mySheetElements
-              );
-            }}
+            onChange={(event) => setLength(event.target.value)}
           />
 
           <InputField
@@ -307,14 +280,7 @@ export default function MySheetElements() {
             placeholder={language === "da" ? "f.eks. 100" : "e.g. 100"}
             number
             value={width}
-            onChange={(event) => {
-              setWidth(event.target.value);
-              saveInputToLocalStorage(
-                InputFieldValues.width,
-                event.target.value,
-                ComponentNames.mySheetElements
-              );
-            }}
+            onChange={(event) => setWidth(event.target.value)}
           />
 
           <ClearButton
@@ -333,7 +299,8 @@ export default function MySheetElements() {
             onClick={addSheetElement}
           />
         </div>
-      </div>
+      }
+    >
       {loading && <TableSkeleton />}
       {!loading && rows.length === 0 && (
         <EmptyStateLine language={language} type={ITEMTYPES.SheetElement} />
@@ -346,6 +313,6 @@ export default function MySheetElements() {
           <DataTable rows={rows} headers={headers} />
         </div>
       )}
-    </div>
+    </PageLayout>
   );
 }

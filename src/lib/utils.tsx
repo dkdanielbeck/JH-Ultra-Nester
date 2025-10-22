@@ -17,7 +17,7 @@ export function cn(...inputs: ClassValue[]) {
 export const getResourceName = (
   language: string,
   itemType: ItemTypeEnum
-): String => {
+): string => {
   switch (itemType) {
     case ITEMTYPES.Sheet:
       return language === "da" ? "plader" : "sheets";

@@ -1,4 +1,3 @@
-import { loadLanguage } from "@/App";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +19,7 @@ import {
   ITEMTYPES,
 } from "@/lib/types";
 import {
+  loadLanguage,
   loadNestingConfigurationFromLocalStorage,
   saveNestingConfigurationToLocalStorage,
 } from "@/lib/utils-local-storage";
@@ -111,7 +111,7 @@ export default function CalculateSheetNesting() {
     };
 
     loadItems();
-  }, []);
+  }, [savedConfig]);
 
   useEffect(() => {
     if (savedConfig?.selectedProfileId) {
@@ -121,7 +121,7 @@ export default function CalculateSheetNesting() {
     } else {
       setSelectedProfile(machines.find((m) => m.default));
     }
-  }, [machines]);
+  }, [machines, savedConfig]);
 
   const toggleElementSelection = (sheetElement: SheetElement) => {
     setSelectedElements((previous) =>
