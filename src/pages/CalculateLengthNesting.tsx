@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -40,9 +40,13 @@ import VisualisationCard from "@/components/my-components/VisualisationCard";
 import ResultsCard from "@/components/my-components/ResultsCard";
 
 export default function CalculateLengthNesting() {
-  const savedConfig = loadNestingConfigurationFromLocalStorage(
-    ComponentNames.calculateLengthNesting
+  const savedConfigRef = useRef(
+    loadNestingConfigurationFromLocalStorage(
+      ComponentNames.calculateLengthNesting
+    )
   );
+  const savedConfig = savedConfigRef.current;
+
   const [loading, setIsLoading] = useState<boolean>(false);
 
   const [language] = useState<string>(() => loadLanguage());
@@ -117,7 +121,7 @@ export default function CalculateLengthNesting() {
     };
 
     loadItems();
-  }, []);
+  }, [savedConfigRef]);
 
   const toggleSteelElementSelection = (
     steelLengthElement: SteelLengthElement

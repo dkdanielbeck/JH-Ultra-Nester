@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -35,9 +35,12 @@ import VisualisationCard from "@/components/my-components/VisualisationCard";
 import ResultsCard from "@/components/my-components/ResultsCard";
 
 export default function CalculateSheetNesting() {
-  const savedConfig = loadNestingConfigurationFromLocalStorage(
-    ComponentNames.calculateSheetNesting
+  const savedConfigRef = useRef(
+    loadNestingConfigurationFromLocalStorage(
+      ComponentNames.calculateSheetNesting
+    )
   );
+  const savedConfig = savedConfigRef.current;
 
   const [language] = useState<string>(() => loadLanguage());
   const [sheetElements, setSheetElements] = useState<SheetElement[]>([]);
@@ -111,7 +114,7 @@ export default function CalculateSheetNesting() {
     };
 
     loadItems();
-  }, []);
+  }, [savedConfigRef]);
 
   useEffect(() => {
     if (savedConfig?.selectedProfileId) {
