@@ -175,3 +175,16 @@ input {
   box-shadow: 0 0 0 3px #c7d0dc;
   background-color: #0f172b !important;
 }
+.active-menu-item {
+  color: oklch(44.092% 0.12125 265.535);
+}
+.active-menu-item:hover {
+  color: oklch(44.092% 0.12125 265.535);
+  border: 1px solid oklch(0.704 0.04 256.788);
+  box-shadow: 0 0 0 3px #c7d0dc;
+}
+.menu-item:hover {
+  border: 1px solid oklch(0.704 0.04 256.788);
+  box-shadow: 0 0 0 3px #c7d0dc;
+  color: oklch(0.129 0.042 264.695);
+}

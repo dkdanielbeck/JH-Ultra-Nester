@@ -51,6 +51,9 @@ import SignIn from "./pages/SignIn";
 import { loadLanguage, saveLanguage } from "./lib/utils-local-storage";
 
 function App() {
+  const [activePath, setActivePath] = useState(
+    window.location.hash.replace("#", "")
+  );
   const [language, setLanguage] = useState<string>(() => loadLanguage());
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [showGuideVideo, setShowGuideVideo] = useState(false);
@@ -168,7 +171,12 @@ function App() {
                             <SidebarMenuButton asChild>
                               <Link
                                 to={child.path}
-                                className="flex items-center gap-2"
+                                className={`flex items-center gap-2  ${
+                                  activePath == child.path
+                                    ? "active-menu-item"
+                                    : "menu-item"
+                                }`}
+                                onClick={() => setActivePath(child.path)}
                               >
                                 <child.icon className="h-4 w-4" />
                                 <span>{child.title}</span>
