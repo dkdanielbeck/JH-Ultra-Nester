@@ -23,7 +23,11 @@ import {
   loadNestingConfigurationFromLocalStorage,
   saveNestingConfigurationToLocalStorage,
 } from "@/lib/utils-local-storage";
-import { findBest } from "@/lib/utils-nesting";
+import {
+  assessSheetFit,
+  findBestForSheets,
+  findBestForSheetsStraightCuts,
+} from "@/lib/utils-nesting";
 import { formatEuropeanFloat } from "@/lib/utils";
 import EmptyStateLine from "@/components/my-components/EmptyStateLine";
 import DropdownMenuConsolidated from "@/components/my-components/DropdownMenuConsolidated";
@@ -34,6 +38,9 @@ import TooltipButton from "@/components/my-components/TooltipButton";
 import VisualisationCard from "@/components/my-components/VisualisationCard";
 import ResultsCard from "@/components/my-components/ResultsCard";
 import PageLayout from "@/components/my-components/PageLayout";
+import NestingErrorModal from "@/components/my-components/NestingErrorModal";
+import ZoomInButton from "@/components/my-components/ZoomInButton";
+import ZoomOutButton from "@/components/my-components/ZoomOutButton";
 
 export default function CalculateSheetNesting() {
   const savedConfigRef = useRef(
@@ -60,6 +67,7 @@ export default function CalculateSheetNesting() {
       layouts: [],
     }
   );
+  const [vizSize, setVizSize] = useState<number>(savedConfig?.vizSize ?? 450);
   const [loading, setIsLoading] = useState<boolean>(false);
 
   const [selectedSheetElements, setSelectedElements] = useState<SheetElement[]>(
@@ -67,6 +75,11 @@ export default function CalculateSheetNesting() {
   );
   const [selectedSheets, setSelectedSheets] = useState<Sheet[]>([]);
   const [selectedProfile, setSelectedProfile] = useState<Machine | undefined>();
+  const [unusableData, setUnusableData] = useState<{
+    unusableElements: SheetElement[];
+    parentSummaries: string[];
+    selectedMachine?: Machine;
+  } | null>(null);
 
   useEffect(() => {
     saveNestingConfigurationToLocalStorage(
@@ -76,6 +89,7 @@ export default function CalculateSheetNesting() {
         selectedProfileId: selectedProfile?.id,
         quantities,
         endResults,
+        vizSize,
       },
       ComponentNames.calculateSheetNesting
     );
@@ -85,6 +99,7 @@ export default function CalculateSheetNesting() {
     selectedProfile,
     quantities,
     endResults,
+    vizSize,
   ]);
 
   useEffect(() => {
@@ -170,8 +185,27 @@ export default function CalculateSheetNesting() {
   };
 
   const getResults = () => {
+    setUnusableData(null);
     setIsCalculating(true);
     setTimeout(() => {
+      const { unusableElements, sheetSummaries } = assessSheetFit(
+        selectedSheetElements,
+        selectedSheets,
+        selectedProfile,
+        language
+      );
+
+      if (unusableElements.length > 0) {
+        setIsCalculating(false);
+
+        setUnusableData({
+          unusableElements,
+          parentSummaries: sheetSummaries,
+          selectedMachine: selectedProfile,
+        });
+        return;
+      }
+
       const relevantElements: SheetElement[] = selectedSheetElements.flatMap(
         (sheetElement) =>
           Array.from({ length: quantities[sheetElement.id] ?? 0 }).map(() => ({
@@ -184,7 +218,13 @@ export default function CalculateSheetNesting() {
           }))
       );
 
-      const best = findBest(relevantElements, selectedSheets, selectedProfile);
+      const best = selectedProfile?.straightCuts
+        ? findBestForSheetsStraightCuts(
+            relevantElements,
+            selectedSheets,
+            selectedProfile
+          )
+        : findBestForSheets(relevantElements, selectedSheets, selectedProfile);
 
       const results = selectedSheets
         .map((sheet) => ({
@@ -442,21 +482,42 @@ export default function CalculateSheetNesting() {
                 )}
               <>
                 {endResults.layouts.length > 0 && (
-                  <h2 className="text-xl font-semibold mb-2 pl-4 mt-4">
-                    {language === "da" ? "Visualiseret" : "Visualized"}
-                  </h2>
+                  <div className="flex items-center justify-between pr-4 pl-4 mt-4 mb-2">
+                    <h2 className="text-xl font-semibold">
+                      {language === "da" ? "Visualiseret" : "Visualized"}
+                    </h2>
+                    <div className="flex space-x-2">
+                      <ZoomOutButton
+                        language={language}
+                        disabled={vizSize <= 400}
+                        onClick={() =>
+                          setVizSize((prev) => Math.max(400, prev - 50))
+                        }
+                      />
+                      <ZoomInButton
+                        language={language}
+                        disabled={vizSize >= 1000}
+                        onClick={() =>
+                          setVizSize((prev) => Math.min(1000, prev + 50))
+                        }
+                      />
+                    </div>
+                  </div>
                 )}
 
                 {endResults.layouts.length > 0 &&
                   (() => {
-                    const MAX_DIM = 450;
+                    const MAX_DIM = vizSize;
 
                     // 1) find the largest sheet in your result set
-                    const maxW = Math.max(
-                      ...endResults.layouts.map((l) => l.width)
+                    const sortedLayouts = [...endResults.layouts].sort(
+                      (a, b) =>
+                        b.width * b.length - a.width * a.length ||
+                        b.width - a.width
                     );
+                    const maxW = Math.max(...sortedLayouts.map((l) => l.width));
                     const maxH = Math.max(
-                      ...endResults.layouts.map((l) => l.length)
+                      ...sortedLayouts.map((l) => l.length)
                     );
 
                     // 2) one single global scale factor
@@ -470,7 +531,7 @@ export default function CalculateSheetNesting() {
                         style={{ borderRadius: "10px" }}
                         className="flex mb-4 flex-wrap gap-4 overflow-auto p-4 bg-muted max-h-[calc(68vh)]"
                       >
-                        {endResults.layouts.map((layout, i) => {
+                        {sortedLayouts.map((layout, i) => {
                           return (
                             <VisualisationCard
                               key={layout.parentId + i}
@@ -486,6 +547,16 @@ export default function CalculateSheetNesting() {
             </div>
           </div>
         )}
+      {unusableData && (
+        <NestingErrorModal
+          language={language}
+          unusableElements={unusableData.unusableElements}
+          parentSummaries={unusableData.parentSummaries}
+          selectedMachine={unusableData.selectedMachine}
+          parentLabel={language === "da" ? "Valgte plader" : "Selected sheets"}
+          onClose={() => setUnusableData(null)}
+        />
+      )}
     </PageLayout>
   );
 }

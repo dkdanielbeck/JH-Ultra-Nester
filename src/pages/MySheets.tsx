@@ -68,6 +68,14 @@ export default function MySheets() {
   const [editedWeight, setEditedWeight] = useState<string>("");
   const [editedLength, setEditedLength] = useState<string>("");
   const [beingEdited, setBeingEdited] = useState<string>("");
+  const canAdd =
+    !!name?.trim() &&
+    !!length?.trim() &&
+    !!width?.trim() &&
+    isValidEuropeanNumberString(length) &&
+    isValidEuropeanNumberString(width) &&
+    (!price?.trim() || isValidEuropeanNumberString(price)) &&
+    (!weight?.trim() || isValidEuropeanNumberString(weight));
 
   useEffect(() => {
     const loadSheets = async () => {
@@ -315,79 +323,95 @@ export default function MySheets() {
           : "On this page you can add sheets that you can continuously reuse when calculating nestings. Take note that Length will always end up the bigger number"
       }
     >
-      <div className="flex flex-col sm:flex-row gap-2 sm:items-end pt-8 mb-8">
-        <InputField
-          label={language === "da" ? "Navn" : "Name"}
-          id="name"
-          placeholder={
-            language === "da" ? "f.eks. Standard, Mini" : "e.g. Standard, Mini"
-          }
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (canAdd) void addSheet();
+        }}
+      >
+        <div className="flex flex-col sm:flex-row gap-2 sm:items-end pt-8 mb-8">
+          <InputField
+            label={language === "da" ? "Navn" : "Name"}
+            id="name"
+            placeholder={
+              language === "da"
+                ? "f.eks. Standard, Mini"
+                : "e.g. Standard, Mini"
+            }
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
 
-        <InputField
-          label={language === "da" ? "Længde (mm)" : "Length (mm)"}
-          id="length"
-          placeholder={language === "da" ? "f.eks. 2000" : "e.g. 2000"}
-          number
-          value={length}
-          onChange={(e) => setLength(e.target.value)}
-        />
+          <InputField
+            label={language === "da" ? "Længde (mm)" : "Length (mm)"}
+            id="length"
+            placeholder={language === "da" ? "f.eks. 2000" : "e.g. 2000"}
+            number
+            value={length}
+            onChange={(e) => setLength(e.target.value)}
+          />
 
-        <InputField
-          id="width"
-          label={language === "da" ? "Bredde (mm)" : "Width (mm)"}
-          placeholder={language === "da" ? "f.eks. 1000" : "e.g. 1000"}
-          number
-          value={width}
-          onChange={(e) => setWidth(e.target.value)}
-        />
+          <InputField
+            id="width"
+            label={language === "da" ? "Bredde (mm)" : "Width (mm)"}
+            placeholder={language === "da" ? "f.eks. 1000" : "e.g. 1000"}
+            number
+            value={width}
+            onChange={(e) => setWidth(e.target.value)}
+          />
 
-        <InputField
-          id="price"
-          label={language === "da" ? "Kilopris" : "Price per kilo"}
-          placeholder={language === "da" ? "f.eks. 24,5" : "e.g. 24.5"}
-          number
-          value={price}
-          onChange={(e) => setPrice(e.target.value)}
-        />
+          <InputField
+            id="price"
+            label={
+              <>
+                {language === "da" ? "Kilopris" : "Price per kilo"}{" "}
+                <span className="text-muted-foreground">
+                  {language === "da" ? "(valgfri)" : "(optional)"}
+                </span>
+              </>
+            }
+            placeholder={language === "da" ? "f.eks. 24,5" : "e.g. 24.5"}
+            number
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+          />
 
-        <InputField
-          id="weight"
-          label={language === "da" ? "Vægt (kg)" : "Weight (kg)"}
-          placeholder={language === "da" ? "f.eks. 57" : "e.g. 57"}
-          number
-          value={weight}
-          onChange={(e) => setWeight(e.target.value)}
-        />
+          <InputField
+            id="weight"
+            label={
+              <>
+                {language === "da" ? "Vægt (kg)" : "Weight (kg)"}{" "}
+                <span className="text-muted-foreground">
+                  {language === "da" ? "(valgfri)" : "(optional)"}
+                </span>
+              </>
+            }
+            placeholder={language === "da" ? "f.eks. 57" : "e.g. 57"}
+            number
+            value={weight}
+            onChange={(e) => setWeight(e.target.value)}
+          />
 
-        <ClearButton
-          language={language}
-          disabled={
-            !name?.trim() &&
-            !length?.trim() &&
-            !width?.trim() &&
-            !weight.trim() &&
-            !price.trim()
-          }
-          onClick={clearInputs}
-        />
+          <ClearButton
+            language={language}
+            disabled={
+              !name?.trim() &&
+              !length?.trim() &&
+              !width?.trim() &&
+              !weight.trim() &&
+              !price.trim()
+            }
+            onClick={clearInputs}
+          />
 
-        <AddButton
-          language={language}
-          disabled={
-            !name?.trim() ||
-            !length?.trim() ||
-            !width?.trim() ||
-            !isValidEuropeanNumberString(length) ||
-            !isValidEuropeanNumberString(width) ||
-            (!!price?.trim() && !isValidEuropeanNumberString(price)) ||
-            (!!weight?.trim() && !isValidEuropeanNumberString(weight))
-          }
-          onClick={addSheet}
-        />
-      </div>
+          <AddButton
+            language={language}
+            disabled={!canAdd}
+            onClick={addSheet}
+            type="submit"
+          />
+        </div>
+      </form>
       {loading && <TableSkeleton />}
       {!loading && rows.length === 0 && (
         <EmptyStateLine language={language} type={ITEMTYPES.Sheet} />

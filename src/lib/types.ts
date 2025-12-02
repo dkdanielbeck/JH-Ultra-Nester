@@ -165,6 +165,7 @@ export interface SavedNestingConfiguration {
   quantities: Record<string, number>;
   endResults: NestingResults;
   lengthTypeAssociations?: LengthTypeAssociations[];
+  vizSize?: number;
 }
 
 export interface LengthTypeAssociations {

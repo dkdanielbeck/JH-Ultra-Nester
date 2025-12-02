@@ -57,6 +57,10 @@ export default function MySheetMachines() {
   const [beingEdited, setBeingEdited] = useState<string>("");
 
   const [loading, setIsLoading] = useState<boolean>(false);
+  const canAdd =
+    !!name?.trim() &&
+    isValidEuropeanNumberString(margin) &&
+    isValidEuropeanNumberString(border);
 
   useEffect(() => {
     const loadMachines = async () => {
@@ -113,7 +117,7 @@ export default function MySheetMachines() {
     await updateMachine(beingEdited, newEditedMachine);
 
     const updated = machines.map((machine) =>
-      machine.id === beingEdited ? { ...machine, newEditedMachine } : machine
+      machine.id === beingEdited ? { ...machine, ...newEditedMachine } : machine
     );
     setMachines(updated);
 
@@ -339,51 +343,55 @@ export default function MySheetMachines() {
           : "On this page you can add machines with defined margin and border that you can continuously reuse when calculating nestings."
       }
     >
-      <div className="flex flex-col sm:flex-row gap-2 sm:items-end pt-8 mb-8">
-        <InputField
-          label={language === "da" ? "Navn" : "Name"}
-          id="machineName"
-          placeholder={
-            language === "da" ? "f.eks. Fiberlaser" : "e.g. Fiber laser"
-          }
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-        />
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (canAdd) void addNewMachine();
+        }}
+      >
+        <div className="flex flex-col sm:flex-row gap-2 sm:items-end pt-8 mb-8">
+          <InputField
+            label={language === "da" ? "Navn" : "Name"}
+            id="machineName"
+            placeholder={
+              language === "da" ? "f.eks. Fiberlaser" : "e.g. Fiber laser"
+            }
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+          />
 
-        <InputField
-          label={language === "da" ? "Margen (mm)" : "Margin (mm)"}
-          id="machineMargin"
-          placeholder={language === "da" ? "f.eks. 10" : "e.g. 10"}
-          number
-          value={margin}
-          onChange={(event) => setMargin(event.target.value)}
-        />
+          <InputField
+            label={language === "da" ? "Margen (mm)" : "Margin (mm)"}
+            id="machineMargin"
+            placeholder={language === "da" ? "f.eks. 10" : "e.g. 10"}
+            number
+            value={margin}
+            onChange={(event) => setMargin(event.target.value)}
+          />
 
-        <InputField
-          label={language === "da" ? "Kant (mm)" : "Border (mm)"}
-          id="machineBorder"
-          placeholder={language === "da" ? "f.eks. 5" : "e.g. 5"}
-          number
-          value={border}
-          onChange={(event) => setBorder(event.target.value)}
-        />
+          <InputField
+            label={language === "da" ? "Kant (mm)" : "Border (mm)"}
+            id="machineBorder"
+            placeholder={language === "da" ? "f.eks. 5" : "e.g. 5"}
+            number
+            value={border}
+            onChange={(event) => setBorder(event.target.value)}
+          />
 
-        <ClearButton
-          language={language}
-          disabled={!name?.trim() && !margin?.trim() && !border?.trim()}
-          onClick={clearInputs}
-        />
+          <ClearButton
+            language={language}
+            disabled={!name?.trim() && !margin?.trim() && !border?.trim()}
+            onClick={clearInputs}
+          />
 
-        <AddButton
-          language={language}
-          disabled={
-            !name?.trim() ||
-            !isValidEuropeanNumberString(margin) ||
-            !isValidEuropeanNumberString(border)
-          }
-          onClick={addNewMachine}
-        />
-      </div>
+          <AddButton
+            language={language}
+            disabled={!canAdd}
+            onClick={addNewMachine}
+            type="submit"
+          />
+        </div>
+      </form>
 
       {loading && <TableSkeleton />}
       {!loading && rows.length === 0 && (

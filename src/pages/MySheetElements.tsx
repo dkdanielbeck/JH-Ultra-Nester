@@ -256,49 +256,63 @@ export default function MySheetElements() {
           : "On this page you can add sheetElement elements that you can continuously reuse when calculating nestings. Take note that Length will always end up the bigger number"
       }
     >
-      <div className="flex flex-col sm:flex-row gap-2 sm:items-end pt-8 mb-8">
-        <InputField
-          label={language === "da" ? "Plade emne navn" : "Sheet element name"}
-          id="sheetElementName"
-          placeholder={language === "da" ? "f.eks. Emne A" : "e.g. Part A"}
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-        />
-
-        <InputField
-          label={language === "da" ? "Længde (mm)" : "Length (mm)"}
-          id="sheetElementLength"
-          placeholder={language === "da" ? "f.eks. 200" : "e.g. 200"}
-          number
-          value={length}
-          onChange={(event) => setLength(event.target.value)}
-        />
-
-        <InputField
-          label={language === "da" ? "Bredde (mm)" : "Width (mm)"}
-          id="sheetElementWidth"
-          placeholder={language === "da" ? "f.eks. 100" : "e.g. 100"}
-          number
-          value={width}
-          onChange={(event) => setWidth(event.target.value)}
-        />
-
-        <ClearButton
-          language={language}
-          disabled={!name?.trim() && !length?.trim() && !width?.trim()}
-          onClick={clearInputs}
-        />
-
-        <AddButton
-          language={language}
-          disabled={
-            !name?.trim() ||
-            !isValidEuropeanNumberString(length) ||
-            !isValidEuropeanNumberString(width)
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (
+            name?.trim() &&
+            isValidEuropeanNumberString(length) &&
+            isValidEuropeanNumberString(width)
+          ) {
+            void addSheetElement();
           }
-          onClick={addSheetElement}
-        />
-      </div>
+        }}
+      >
+        <div className="flex flex-col sm:flex-row gap-2 sm:items-end pt-8 mb-8">
+          <InputField
+            label={language === "da" ? "Plade emne navn" : "Sheet element name"}
+            id="sheetElementName"
+            placeholder={language === "da" ? "f.eks. Emne A" : "e.g. Part A"}
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+          />
+
+          <InputField
+            label={language === "da" ? "Længde (mm)" : "Length (mm)"}
+            id="sheetElementLength"
+            placeholder={language === "da" ? "f.eks. 200" : "e.g. 200"}
+            number
+            value={length}
+            onChange={(event) => setLength(event.target.value)}
+          />
+
+          <InputField
+            label={language === "da" ? "Bredde (mm)" : "Width (mm)"}
+            id="sheetElementWidth"
+            placeholder={language === "da" ? "f.eks. 100" : "e.g. 100"}
+            number
+            value={width}
+            onChange={(event) => setWidth(event.target.value)}
+          />
+
+          <ClearButton
+            language={language}
+            disabled={!name?.trim() && !length?.trim() && !width?.trim()}
+            onClick={clearInputs}
+          />
+
+          <AddButton
+            language={language}
+            disabled={
+              !name?.trim() ||
+              !isValidEuropeanNumberString(length) ||
+              !isValidEuropeanNumberString(width)
+            }
+            onClick={addSheetElement}
+            type="submit"
+          />
+        </div>
+      </form>
       {loading && <TableSkeleton />}
       {!loading && rows.length === 0 && (
         <EmptyStateLine language={language} type={ITEMTYPES.SheetElement} />

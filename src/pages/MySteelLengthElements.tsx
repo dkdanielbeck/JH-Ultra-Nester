@@ -58,6 +58,8 @@ export default function MySteelLengthElements() {
   const [beingEdited, setBeingEdited] = useState<string>("");
 
   const [loading, setIsLoading] = useState<boolean>(false);
+  const canAdd =
+    !!name?.trim() && !!length?.trim() && isValidEuropeanNumberString(length);
 
   useEffect(() => {
     const loadSteelLengthElements = async () => {
@@ -229,42 +231,50 @@ export default function MySteelLengthElements() {
           : "On this page you can add steel length elements that you can continuously reuse when calculating nestings."
       }
     >
-      <div className="flex flex-col sm:flex-row gap-2 sm:items-end pt-8 mb-8">
-        <InputField
-          label={
-            language === "da"
-              ? "Stål længde emne navn"
-              : "Steel length element name"
-          }
-          id="steelLengthElementName"
-          placeholder={
-            language === "da" ? "f.eks. Fladstål 40x5" : "e.g. Flat bar 40x5"
-          }
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (canAdd) void addNewSteelLengthElement();
+        }}
+      >
+        <div className="flex flex-col sm:flex-row gap-2 sm:items-end pt-8 mb-8">
+          <InputField
+            label={
+              language === "da"
+                ? "Stål længde emne navn"
+                : "Steel length element name"
+            }
+            id="steelLengthElementName"
+            placeholder={
+              language === "da" ? "f.eks. Fladstål 40x5" : "e.g. Flat bar 40x5"
+            }
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
 
-        <InputField
-          label={language === "da" ? "Længde (mm)" : "Length (mm)"}
-          id="steelLengthElementLength"
-          placeholder={language === "da" ? "f.eks. 600" : "e.g. 600"}
-          number
-          value={length}
-          onChange={(e) => setLength(e.target.value)}
-        />
+          <InputField
+            label={language === "da" ? "Længde (mm)" : "Length (mm)"}
+            id="steelLengthElementLength"
+            placeholder={language === "da" ? "f.eks. 600" : "e.g. 600"}
+            number
+            value={length}
+            onChange={(e) => setLength(e.target.value)}
+          />
 
-        <ClearButton
-          language={language}
-          disabled={!name?.trim() && !length?.trim()}
-          onClick={clearInputs}
-        />
+          <ClearButton
+            language={language}
+            disabled={!name?.trim() && !length?.trim()}
+            onClick={clearInputs}
+          />
 
-        <AddButton
-          language={language}
-          disabled={!name?.trim() || !isValidEuropeanNumberString(length)}
-          onClick={addNewSteelLengthElement}
-        />
-      </div>
+          <AddButton
+            language={language}
+            disabled={!canAdd}
+            onClick={addNewSteelLengthElement}
+            type="submit"
+          />
+        </div>
+      </form>
       {loading && <TableSkeleton />}
       {!loading && rows.length === 0 && (
         <EmptyStateLine

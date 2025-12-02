@@ -1,9 +1,10 @@
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
+import type { ReactNode } from "react";
 
 interface InputFieldProps {
   id: string;
-  label?: string;
+  label?: ReactNode;
   placeholder?: string;
   number?: boolean;
   value: string;

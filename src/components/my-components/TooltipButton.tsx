@@ -13,6 +13,7 @@ interface TooltipButtonProps {
   className?: string;
   text: string;
   onClick: () => void;
+  type?: "button" | "submit" | "reset";
   variant:
     | "link"
     | "default"
@@ -21,6 +22,7 @@ interface TooltipButtonProps {
     | "secondary"
     | "ghost";
   disabled?: boolean;
+  size?: "default" | "icon";
 }
 
 export default function TooltipButton({
@@ -30,6 +32,8 @@ export default function TooltipButton({
   className,
   disabled,
   variant,
+  size,
+  type = "button",
 }: TooltipButtonProps) {
   return (
     <TooltipProvider>
@@ -40,7 +44,8 @@ export default function TooltipButton({
             className={`tooltip-button ${className}`}
             disabled={disabled}
             variant={variant}
-            size="icon"
+            size={size ?? "icon"}
+            type={type}
             onClick={() => onClick()}
           >
             {ButtonIcon ? <ButtonIcon /> : text}

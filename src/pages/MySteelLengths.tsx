@@ -63,6 +63,12 @@ export default function MySteelLengths() {
   const [beingEdited, setBeingEdited] = useState<string>("");
 
   const [loading, setIsLoading] = useState<boolean>(false);
+  const canAdd =
+    !!name?.trim() &&
+    !!length?.trim() &&
+    isValidEuropeanNumberString(length) &&
+    (!price?.trim() || isValidEuropeanNumberString(price)) &&
+    (!weight?.trim() || isValidEuropeanNumberString(weight));
 
   useEffect(() => {
     const loadSteelLengths = async () => {
@@ -293,7 +299,13 @@ export default function MySteelLengths() {
           : "On this page you can add steel lengths that you can continuously reuse when calculating nestings."
       }
     >
-      <div className="flex flex-col sm:flex-row gap-2 sm:items-end pt-8 mb-8">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (canAdd) void addNewSteelLength();
+        }}
+      >
+        <div className="flex flex-col sm:flex-row gap-2 sm:items-end pt-8 mb-8">
         <InputField
           label={language === "da" ? "Stål længde navn" : "Steel length name"}
           id="steelLengthName"
@@ -314,7 +326,14 @@ export default function MySteelLengths() {
         />
 
         <InputField
-          label={language === "da" ? "Kilopris" : "Price per kilo"}
+          label={
+            <>
+              {language === "da" ? "Kilopris" : "Price per kilo"}{" "}
+              <span className="text-muted-foreground">
+                {language === "da" ? "(valgfri)" : "(optional)"}
+              </span>
+            </>
+          }
           id="steelLengthPrice"
           placeholder={language === "da" ? "f.eks. 24,5" : "e.g. 24.5"}
           number
@@ -323,7 +342,14 @@ export default function MySteelLengths() {
         />
 
         <InputField
-          label={language === "da" ? "Vægt (kg)" : "Weight (kg)"}
+          label={
+            <>
+              {language === "da" ? "Vægt (kg)" : "Weight (kg)"}{" "}
+              <span className="text-muted-foreground">
+                {language === "da" ? "(valgfri)" : "(optional)"}
+              </span>
+            </>
+          }
           id="steelLengthWeight"
           placeholder={language === "da" ? "f.eks. 57" : "e.g. 57"}
           number
@@ -342,18 +368,14 @@ export default function MySteelLengths() {
           onClick={clearInputs}
         />
 
-        <AddButton
-          language={language}
-          disabled={
-            !name?.trim() ||
-            !length?.trim() ||
-            !isValidEuropeanNumberString(length) ||
-            (!!price?.trim() && !isValidEuropeanNumberString(price)) ||
-            (!!weight?.trim() && !isValidEuropeanNumberString(weight))
-          }
-          onClick={addNewSteelLength}
-        />
-      </div>
+          <AddButton
+            language={language}
+            disabled={!canAdd}
+            onClick={addNewSteelLength}
+            type="submit"
+          />
+        </div>
+      </form>
       {loading && <TableSkeleton />}
       {!loading && rows.length === 0 && (
         <EmptyStateLine language={language} type={ITEMTYPES.SteelLength} />

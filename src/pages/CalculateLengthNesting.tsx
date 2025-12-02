@@ -16,6 +16,7 @@ import {
   type NestingResults,
   ComponentNames,
   ITEMTYPES,
+  type Machine,
   type LengthTypeAssociations,
 } from "@/lib/types";
 import {
@@ -23,7 +24,7 @@ import {
   loadNestingConfigurationFromLocalStorage,
   saveNestingConfigurationToLocalStorage,
 } from "@/lib/utils-local-storage";
-import { findBest } from "@/lib/utils-nesting";
+import { assessLengthFit, findBestForLengths } from "@/lib/utils-nesting";
 import EmptyStateLine from "@/components/my-components/EmptyStateLine";
 import { formatEuropeanFloat } from "@/lib/utils";
 import DropdownMenuConsolidated from "@/components/my-components/DropdownMenuConsolidated";
@@ -39,6 +40,9 @@ import {
 import VisualisationCard from "@/components/my-components/VisualisationCard";
 import ResultsCard from "@/components/my-components/ResultsCard";
 import PageLayout from "@/components/my-components/PageLayout";
+import NestingErrorModal from "@/components/my-components/NestingErrorModal";
+import ZoomInButton from "@/components/my-components/ZoomInButton";
+import ZoomOutButton from "@/components/my-components/ZoomOutButton";
 
 export default function CalculateLengthNesting() {
   const savedConfigRef = useRef(
@@ -68,6 +72,7 @@ export default function CalculateLengthNesting() {
       layouts: [],
     }
   );
+  const [vizSize, setVizSize] = useState<number>(savedConfig?.vizSize ?? 500);
   const [selectedSteelLengthElements, setSelectedSteelLengthElements] =
     useState<SteelLengthElement[]>([]);
   const [selectedSteelLengths, setSelectedSteelLengths] = useState<
@@ -75,6 +80,11 @@ export default function CalculateLengthNesting() {
   >([]);
   const [selectedLengthTypeAssociations, setSelectedLengthTypeAssociations] =
     useState<LengthTypeAssociations[]>([]);
+  const [unusableData, setUnusableData] = useState<{
+    unusableElements: SteelLengthElement[];
+    parentSummaries: string[];
+    selectedMachine?: Machine;
+  } | null>(null);
 
   useEffect(() => {
     saveNestingConfigurationToLocalStorage(
@@ -85,6 +95,7 @@ export default function CalculateLengthNesting() {
         quantities,
         endResults,
         lengthTypeAssociations: selectedLengthTypeAssociations,
+        vizSize,
       },
       ComponentNames.calculateLengthNesting
     );
@@ -94,6 +105,7 @@ export default function CalculateLengthNesting() {
     selectedLengthTypeAssociations,
     quantities,
     endResults,
+    vizSize,
   ]);
 
   useEffect(() => {
@@ -171,8 +183,39 @@ export default function CalculateLengthNesting() {
   };
 
   const getResults = () => {
+    setUnusableData(null);
     setIsCalculating(true);
     setTimeout(() => {
+      const { unusableElements, parentSummaries } = assessLengthFit(
+        selectedSteelLengthElements,
+        selectedSteelLengths,
+        selectedLengthTypeAssociations
+      );
+
+      const sawMachine: Machine & {
+        lengthTypeAssociations: LengthTypeAssociations[];
+      } = {
+        border: 0,
+        margin: 1.6,
+        name: "Saw",
+        id: "saw",
+        default: false,
+        straightCuts: false,
+        type: ITEMTYPES.Machine,
+        lengthTypeAssociations: selectedLengthTypeAssociations,
+      };
+
+      if (unusableElements.length > 0) {
+        setIsCalculating(false);
+
+        setUnusableData({
+          unusableElements,
+          parentSummaries,
+          selectedMachine: sawMachine,
+        });
+        return;
+      }
+
       const relevantElements: SteelLengthElement[] =
         selectedSteelLengthElements.flatMap((selectedSteelLengthElement) =>
           Array.from({
@@ -187,15 +230,11 @@ export default function CalculateLengthNesting() {
           }))
         );
 
-      const best = findBest(relevantElements, selectedSteelLengths, {
-        border: 0,
-        margin: 1.6,
-        name: "Saw",
-        id: "saw",
-        default: false,
-        straightCuts: false,
-        type: ITEMTYPES.Machine,
-      });
+      const best = findBestForLengths(
+        relevantElements,
+        selectedSteelLengths,
+        sawMachine
+      );
 
       const results = selectedSteelLengths
         .map((steelLength) => ({
@@ -409,9 +448,35 @@ export default function CalculateLengthNesting() {
                                       variant="outline"
                                       className="tooltip-button"
                                     >
-                                      {language === "da"
-                                        ? "Vælg længde type"
-                                        : "Select length type"}
+                                      {(() => {
+                                        const matches =
+                                          selectedLengthTypeAssociations.filter(
+                                            (assoc) =>
+                                              assoc.childId ===
+                                              selectedSteelLengthElement.id
+                                          );
+                                        if (matches.length === 0) {
+                                          return language === "da"
+                                            ? "Vælg længde type"
+                                            : "Select length type";
+                                        }
+                                        const names = matches
+                                          .map((assoc) => {
+                                            const length =
+                                              selectedSteelLengths.find(
+                                                (sl) => sl.id === assoc.parentId
+                                              ) ||
+                                              steelLengths.find(
+                                                (sl) => sl.id === assoc.parentId
+                                              );
+                                            return length?.name;
+                                          })
+                                          .filter(Boolean);
+                                        return names.join(", ") ||
+                                          (language === "da"
+                                            ? "Vælg længde type"
+                                            : "Select length type");
+                                      })()}
                                     </Button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent>
@@ -498,14 +563,32 @@ export default function CalculateLengthNesting() {
               )}
             <>
               {endResults.layouts.length > 0 && (
-                <h2 className="text-xl font-semibold mb-2 pl-4 mt-4">
-                  {language === "da" ? "Visualiseret" : "Visualized"}
-                </h2>
+                <div className="flex items-center justify-between pr-4 pl-4 mt-4 mb-2">
+                  <h2 className="text-xl font-semibold">
+                    {language === "da" ? "Visualiseret" : "Visualized"}
+                  </h2>
+                  <div className="flex space-x-2">
+                    <ZoomOutButton
+                      language={language}
+                      disabled={vizSize <= 400}
+                      onClick={() =>
+                        setVizSize((prev) => Math.max(400, prev - 50))
+                      }
+                    />
+                    <ZoomInButton
+                      language={language}
+                      disabled={vizSize >= 1000}
+                      onClick={() =>
+                        setVizSize((prev) => Math.min(1000, prev + 50))
+                      }
+                    />
+                  </div>
+                </div>
               )}
 
               {endResults.layouts.length > 0 &&
                 (() => {
-                  const MAX_DIM = 500;
+                  const MAX_DIM = vizSize;
 
                   // 1) find the largest sheet in your result set
                   const maxW = Math.max(
@@ -539,6 +622,18 @@ export default function CalculateLengthNesting() {
             </>
           </div>
         </div>
+      )}
+      {unusableData && (
+        <NestingErrorModal
+          language={language}
+          unusableElements={unusableData.unusableElements}
+          parentSummaries={unusableData.parentSummaries}
+          selectedMachine={unusableData.selectedMachine}
+          parentLabel={
+            language === "da" ? "Valgte længder" : "Selected lengths"
+          }
+          onClose={() => setUnusableData(null)}
+        />
       )}
     </PageLayout>
   );

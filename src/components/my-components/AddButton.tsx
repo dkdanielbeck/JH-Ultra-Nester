@@ -5,12 +5,14 @@ interface AddButtonProps {
   language: string;
   disabled?: boolean;
   onClick: () => void;
+  type?: "button" | "submit" | "reset";
 }
 
 export default function AddButton({
   language,
   disabled = false,
   onClick,
+  type = "button",
 }: AddButtonProps) {
   return (
     <TooltipButton
@@ -18,6 +20,7 @@ export default function AddButton({
       disabled={disabled}
       text={language === "da" ? "Tilføj" : "Add"}
       variant="default"
+      type={type}
       onClick={onClick}
     />
   );
