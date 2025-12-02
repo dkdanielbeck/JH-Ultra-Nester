@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -41,6 +41,12 @@ import PageLayout from "@/components/my-components/PageLayout";
 import NestingErrorModal from "@/components/my-components/NestingErrorModal";
 import ZoomInButton from "@/components/my-components/ZoomInButton";
 import ZoomOutButton from "@/components/my-components/ZoomOutButton";
+import PrintButton from "@/components/my-components/PrintButton";
+import {
+  type PrintDensity,
+  type PrintableItem,
+  printVisualisations,
+} from "@/lib/print/print-manager";
 
 export default function CalculateSheetNesting() {
   const savedConfigRef = useRef(
@@ -68,6 +74,7 @@ export default function CalculateSheetNesting() {
     }
   );
   const [vizSize, setVizSize] = useState<number>(savedConfig?.vizSize ?? 450);
+  const [printDensity, setPrintDensity] = useState<PrintDensity>(1);
   const [loading, setIsLoading] = useState<boolean>(false);
 
   const [selectedSheetElements, setSelectedElements] = useState<SheetElement[]>(
@@ -80,6 +87,8 @@ export default function CalculateSheetNesting() {
     parentSummaries: string[];
     selectedMachine?: Machine;
   } | null>(null);
+  const vizRef = useRef<HTMLDivElement | null>(null);
+  const svgRefs = useRef<Map<string, SVGSVGElement | null>>(new Map());
 
   useEffect(() => {
     saveNestingConfigurationToLocalStorage(
@@ -146,6 +155,67 @@ export default function CalculateSheetNesting() {
     }
   }, [machines, savedConfig]);
 
+  const sheetLayoutData = useMemo(() => {
+    const sortedLayouts = [...endResults.layouts].sort(
+      (a, b) => b.width * b.length - a.width * a.length || b.width - a.width
+    );
+
+    const maxWidth =
+      sortedLayouts.length > 0
+        ? Math.max(...sortedLayouts.map((l) => l.width))
+        : 1;
+    const maxHeight =
+      sortedLayouts.length > 0
+        ? Math.max(...sortedLayouts.map((l) => l.length))
+        : 1;
+
+    return { sortedLayouts, maxWidth, maxHeight };
+  }, [endResults.layouts]);
+
+  const registerSvgRef = useCallback(
+    (key: string) => (node: SVGSVGElement | null) => {
+      if (node) {
+        svgRefs.current.set(key, node);
+      } else {
+        svgRefs.current.delete(key);
+      }
+    },
+    []
+  );
+
+  const handlePrint = useCallback(async () => {
+    const printableItems: PrintableItem[] = [];
+
+    sheetLayoutData.sortedLayouts.forEach((layout, index) => {
+      const refKey = `${layout.parentId}-${index}`;
+      const svgNode = svgRefs.current.get(refKey);
+      if (!svgNode) return;
+      printableItems.push({
+        id: refKey,
+        name: `${layout.parentName} (${layout.parentSize})`,
+        svgNode,
+      });
+    });
+
+    if (printableItems.length === 0) {
+      console.warn("No visualisations available to print.");
+      return;
+    }
+
+    await printVisualisations({
+      items: printableItems,
+      density: printDensity,
+    });
+  }, [printDensity, sheetLayoutData.sortedLayouts]);
+
+  const globalScale =
+    sheetLayoutData.sortedLayouts.length > 0
+      ? Math.min(
+          vizSize / sheetLayoutData.maxWidth,
+          vizSize / sheetLayoutData.maxHeight
+        )
+      : 1;
+
   const toggleElementSelection = (sheetElement: SheetElement) => {
     setSelectedElements((previous) =>
       previous.some((selectedElement) => sheetElement.id === selectedElement.id)
@@ -158,12 +228,36 @@ export default function CalculateSheetNesting() {
     }));
   };
 
+  const selectAllElements = () => {
+    setSelectedElements(sheetElements);
+    setQuantities((prev) => {
+      const next = { ...prev };
+      for (const el of sheetElements) {
+        if (!next[el.id]) next[el.id] = 1;
+      }
+      return next;
+    });
+  };
+
+  const deselectAllElements = () => {
+    setSelectedElements([]);
+    setQuantities({});
+  };
+
   const toggleSheetSelection = (sheet: Sheet) => {
     setSelectedSheets((previous) =>
       previous.some((selectedSheet) => sheet.id === selectedSheet.id)
         ? previous.filter((previousSheet) => previousSheet.id !== sheet.id)
         : [...previous, sheet]
     );
+  };
+
+  const selectAllSheets = () => {
+    setSelectedSheets(sheets);
+  };
+
+  const deselectAllSheets = () => {
+    setSelectedSheets([]);
   };
 
   const toggleProfileSelection = (profile: Machine) => {
@@ -336,6 +430,12 @@ export default function CalculateSheetNesting() {
                         onSelect={(sheetElement) =>
                           toggleElementSelection(sheetElement)
                         }
+                        onSelectAll={selectAllElements}
+                        onDeselectAll={deselectAllElements}
+                        disableSelectAll={
+                          selectedSheetElements.length === sheetElements.length
+                        }
+                        disableDeselectAll={selectedSheetElements.length === 0}
                       />
 
                       <DropdownMenuConsolidated<Sheet>
@@ -343,6 +443,10 @@ export default function CalculateSheetNesting() {
                         items={sheets}
                         selectedItems={selectedSheets}
                         onSelect={(sheet) => toggleSheetSelection(sheet)}
+                        onSelectAll={selectAllSheets}
+                        onDeselectAll={deselectAllSheets}
+                        disableSelectAll={selectedSheets.length === sheets.length}
+                        disableDeselectAll={selectedSheets.length === 0}
                       />
                       <DropdownMenuConsolidated<Machine>
                         language={language}
@@ -481,12 +585,21 @@ export default function CalculateSheetNesting() {
                   <ResultsCard language={language} endResults={endResults} />
                 )}
               <>
-                {endResults.layouts.length > 0 && (
+                {sheetLayoutData.sortedLayouts.length > 0 && (
                   <div className="flex items-center justify-between pr-4 pl-4 mt-4 mb-2">
                     <h2 className="text-xl font-semibold">
                       {language === "da" ? "Visualiseret" : "Visualized"}
                     </h2>
-                    <div className="flex space-x-2">
+                    <div className="flex items-center space-x-2">
+                      <PrintButton
+                        language={language}
+                        density={printDensity}
+                        onDensityChange={(next) => setPrintDensity(next)}
+                        onPrint={handlePrint}
+                        disabled={
+                          isCalculating || sheetLayoutData.sortedLayouts.length === 0
+                        }
+                      />
                       <ZoomOutButton
                         language={language}
                         disabled={vizSize <= 400}
@@ -505,44 +618,22 @@ export default function CalculateSheetNesting() {
                   </div>
                 )}
 
-                {endResults.layouts.length > 0 &&
-                  (() => {
-                    const MAX_DIM = vizSize;
-
-                    // 1) find the largest sheet in your result set
-                    const sortedLayouts = [...endResults.layouts].sort(
-                      (a, b) =>
-                        b.width * b.length - a.width * a.length ||
-                        b.width - a.width
-                    );
-                    const maxW = Math.max(...sortedLayouts.map((l) => l.width));
-                    const maxH = Math.max(
-                      ...sortedLayouts.map((l) => l.length)
-                    );
-
-                    // 2) one single global scale factor
-                    const globalScale = Math.min(
-                      MAX_DIM / maxW,
-                      MAX_DIM / maxH
-                    );
-
-                    return (
-                      <div
-                        style={{ borderRadius: "10px" }}
-                        className="flex mb-4 flex-wrap gap-4 overflow-auto p-4 bg-muted max-h-[calc(68vh)]"
-                      >
-                        {sortedLayouts.map((layout, i) => {
-                          return (
-                            <VisualisationCard
-                              key={layout.parentId + i}
-                              layout={layout}
-                              scaleFactor={globalScale}
-                            />
-                          );
-                        })}
-                      </div>
-                    );
-                  })()}
+                {sheetLayoutData.sortedLayouts.length > 0 && (
+                  <div
+                    ref={vizRef}
+                    style={{ borderRadius: "10px" }}
+                    className="flex mb-4 flex-wrap gap-4 overflow-auto p-4 bg-muted max-h-[calc(68vh)]"
+                  >
+                    {sheetLayoutData.sortedLayouts.map((layout, i) => (
+                      <VisualisationCard
+                        key={layout.parentId + i}
+                        layout={layout}
+                        scaleFactor={globalScale}
+                        svgRef={registerSvgRef(`${layout.parentId}-${i}`)}
+                      />
+                    ))}
+                  </div>
+                )}
               </>
             </div>
           </div>

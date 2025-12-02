@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -43,6 +43,12 @@ import PageLayout from "@/components/my-components/PageLayout";
 import NestingErrorModal from "@/components/my-components/NestingErrorModal";
 import ZoomInButton from "@/components/my-components/ZoomInButton";
 import ZoomOutButton from "@/components/my-components/ZoomOutButton";
+import PrintButton from "@/components/my-components/PrintButton";
+import {
+  type PrintDensity,
+  type PrintableItem,
+  printVisualisations,
+} from "@/lib/print/print-manager";
 
 export default function CalculateLengthNesting() {
   const savedConfigRef = useRef(
@@ -73,6 +79,7 @@ export default function CalculateLengthNesting() {
     }
   );
   const [vizSize, setVizSize] = useState<number>(savedConfig?.vizSize ?? 500);
+  const [printDensity, setPrintDensity] = useState<PrintDensity>(1);
   const [selectedSteelLengthElements, setSelectedSteelLengthElements] =
     useState<SteelLengthElement[]>([]);
   const [selectedSteelLengths, setSelectedSteelLengths] = useState<
@@ -85,6 +92,8 @@ export default function CalculateLengthNesting() {
     parentSummaries: string[];
     selectedMachine?: Machine;
   } | null>(null);
+  const vizRef = useRef<HTMLDivElement | null>(null);
+  const svgRefs = useRef<Map<string, SVGSVGElement | null>>(new Map());
 
   useEffect(() => {
     saveNestingConfigurationToLocalStorage(
@@ -138,6 +147,61 @@ export default function CalculateLengthNesting() {
     loadItems();
   }, [savedConfigRef]);
 
+  const lengthLayoutData = useMemo(() => {
+    const layouts = [...endResults.layouts];
+    const maxWidth =
+      layouts.length > 0 ? Math.max(...layouts.map((l) => l.width)) : 1;
+    const maxHeight =
+      layouts.length > 0 ? Math.max(...layouts.map((l) => l.length)) : 1;
+
+    return { layouts, maxWidth, maxHeight };
+  }, [endResults.layouts]);
+
+  const registerSvgRef = useCallback(
+    (key: string) => (node: SVGSVGElement | null) => {
+      if (node) {
+        svgRefs.current.set(key, node);
+      } else {
+        svgRefs.current.delete(key);
+      }
+    },
+    []
+  );
+
+  const handlePrint = useCallback(async () => {
+    const printableItems: PrintableItem[] = [];
+
+    lengthLayoutData.layouts.forEach((layout, index) => {
+      const refKey = `${layout.parentId}-${index}`;
+      const svgNode = svgRefs.current.get(refKey);
+      if (!svgNode) return;
+
+      printableItems.push({
+        id: refKey,
+        name: `${layout.parentName} (${layout.parentSize})`,
+        svgNode,
+      });
+    });
+
+    if (printableItems.length === 0) {
+      console.warn("No visualisations available to print.");
+      return;
+    }
+
+    await printVisualisations({
+      items: printableItems,
+      density: printDensity,
+    });
+  }, [lengthLayoutData.layouts, printDensity]);
+
+  const globalScale =
+    lengthLayoutData.layouts.length > 0
+      ? Math.min(
+          vizSize / lengthLayoutData.maxWidth,
+          vizSize / lengthLayoutData.maxHeight
+        )
+      : 1;
+
   const toggleSteelElementSelection = (
     steelLengthElement: SteelLengthElement
   ) => {
@@ -155,6 +219,23 @@ export default function CalculateLengthNesting() {
     }));
   };
 
+  const selectAllElements = () => {
+    setSelectedSteelLengthElements(steelLengthElements);
+    setQuantities((prev) => {
+      const next = { ...prev };
+      for (const el of steelLengthElements) {
+        if (!next[el.id]) next[el.id] = 1;
+      }
+      return next;
+    });
+  };
+
+  const deselectAllElements = () => {
+    setSelectedSteelLengthElements([]);
+    setQuantities({});
+    setSelectedLengthTypeAssociations([]);
+  };
+
   const toggleSteelLengthSelection = (steelLength: SteelLength) => {
     setSelectedSteelLengths((previous) =>
       previous.some(
@@ -165,6 +246,15 @@ export default function CalculateLengthNesting() {
           )
         : [...previous, steelLength]
     );
+  };
+
+  const selectAllLengths = () => {
+    setSelectedSteelLengths(steelLengths);
+  };
+
+  const deselectAllLengths = () => {
+    setSelectedSteelLengths([]);
+    setSelectedLengthTypeAssociations([]);
   };
 
   const removeSteelLengthElement = (steelLengthElementId: string) => {
@@ -320,18 +410,27 @@ export default function CalculateLengthNesting() {
       {steelLengthElements.length !== 0 && steelLengths.length !== 0 && (
         <div className="flex w-full flex-col sm:flex-row gap-4">
           <div className="flex-grow mb-2 sm:w-1/2 w-full">
-            <div className="flex flex-col gap-4 mt-9">
-              {steelLengths.length !== 0 &&
-                steelLengthElements.length !== 0 && (
-                  <div className="flex flex-col gap-6 ">
-                    <DropdownMenuConsolidated<SteelLengthElement>
-                      language={language}
-                      items={steelLengthElements}
-                      selectedItems={selectedSteelLengthElements}
-                      onSelect={(steelLengthElement) =>
-                        toggleSteelElementSelection(steelLengthElement)
-                      }
-                    />
+              <div className="flex flex-col gap-4 mt-9">
+                {steelLengths.length !== 0 &&
+                  steelLengthElements.length !== 0 && (
+                    <div className="flex flex-col gap-6 ">
+                      <DropdownMenuConsolidated<SteelLengthElement>
+                        language={language}
+                        items={steelLengthElements}
+                        selectedItems={selectedSteelLengthElements}
+                        onSelect={(steelLengthElement) =>
+                          toggleSteelElementSelection(steelLengthElement)
+                        }
+                        onSelectAll={selectAllElements}
+                        onDeselectAll={deselectAllElements}
+                        disableSelectAll={
+                          selectedSteelLengthElements.length ===
+                          steelLengthElements.length
+                        }
+                        disableDeselectAll={
+                          selectedSteelLengthElements.length === 0
+                        }
+                      />
                     <DropdownMenuConsolidated<SteelLength>
                       language={language}
                       items={steelLengths}
@@ -339,6 +438,12 @@ export default function CalculateLengthNesting() {
                       onSelect={(steelLength) =>
                         toggleSteelLengthSelection(steelLength)
                       }
+                      onSelectAll={selectAllLengths}
+                      onDeselectAll={deselectAllLengths}
+                      disableSelectAll={
+                        selectedSteelLengths.length === steelLengths.length
+                      }
+                      disableDeselectAll={selectedSteelLengths.length === 0}
                     />
 
                     {steelLengths.length !== 0 &&
@@ -562,12 +667,21 @@ export default function CalculateLengthNesting() {
                 <ResultsCard language={language} endResults={endResults} />
               )}
             <>
-              {endResults.layouts.length > 0 && (
+              {lengthLayoutData.layouts.length > 0 && (
                 <div className="flex items-center justify-between pr-4 pl-4 mt-4 mb-2">
                   <h2 className="text-xl font-semibold">
                     {language === "da" ? "Visualiseret" : "Visualized"}
                   </h2>
-                  <div className="flex space-x-2">
+                  <div className="flex items-center space-x-2">
+                    <PrintButton
+                      language={language}
+                      density={printDensity}
+                      onDensityChange={(next) => setPrintDensity(next)}
+                      onPrint={handlePrint}
+                      disabled={
+                        calculating || lengthLayoutData.layouts.length === 0
+                      }
+                    />
                     <ZoomOutButton
                       language={language}
                       disabled={vizSize <= 400}
@@ -586,39 +700,23 @@ export default function CalculateLengthNesting() {
                 </div>
               )}
 
-              {endResults.layouts.length > 0 &&
-                (() => {
-                  const MAX_DIM = vizSize;
-
-                  // 1) find the largest sheet in your result set
-                  const maxW = Math.max(
-                    ...endResults.layouts.map((l) => l.width)
-                  );
-                  const maxH = Math.max(
-                    ...endResults.layouts.map((l) => l.length)
-                  );
-
-                  // 2) one single global scale factor
-                  const globalScale = Math.min(MAX_DIM / maxW, MAX_DIM / maxH);
-
-                  return (
-                    <div
-                      style={{ borderRadius: "10px" }}
-                      className="flex mb-4 flex-wrap gap-4 overflow-auto p-4 bg-muted max-h-[calc(68vh)]"
-                    >
-                      {endResults.layouts.map((layout, i) => {
-                        return (
-                          <VisualisationCard
-                            key={layout.parentId + i}
-                            layout={layout}
-                            scaleFactor={globalScale}
-                            isLength
-                          />
-                        );
-                      })}
-                    </div>
-                  );
-                })()}
+              {lengthLayoutData.layouts.length > 0 && (
+                <div
+                  ref={vizRef}
+                  style={{ borderRadius: "10px" }}
+                  className="flex mb-4 flex-wrap gap-4 overflow-auto p-4 bg-muted max-h-[calc(68vh)]"
+                >
+                  {lengthLayoutData.layouts.map((layout, i) => (
+                    <VisualisationCard
+                      key={layout.parentId + i}
+                      layout={layout}
+                      scaleFactor={globalScale}
+                      isLength
+                      svgRef={registerSvgRef(`${layout.parentId}-${i}`)}
+                    />
+                  ))}
+                </div>
+              )}
             </>
           </div>
         </div>

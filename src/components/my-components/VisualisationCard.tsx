@@ -4,12 +4,14 @@ interface VisualisationCardProps {
   layout: ParentLayout;
   scaleFactor: number;
   isLength?: boolean;
+  svgRef?: (node: SVGSVGElement | null) => void;
 }
 
 export default function VisualisationCard({
   layout,
   scaleFactor,
   isLength,
+  svgRef,
 }: VisualisationCardProps) {
   const width = layout.width * scaleFactor;
   const height = layout.length * scaleFactor;
@@ -27,6 +29,7 @@ export default function VisualisationCard({
     <div className="mb-4">
       <h3 className="text-lg font-semibold mb-2">{getText()}</h3>
       <svg
+        ref={svgRef}
         className="sheet mx-auto"
         width={width}
         height={height}
