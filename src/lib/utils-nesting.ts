@@ -18,7 +18,7 @@ type AnyElement = SheetElement | SteelLengthElement;
 // Toggles to adjust packing behaviors; flip to revert to prior logic.
 const USE_1D_LENGTH_PACKER = true; // length nesting uses kerf-style 1D packing
 const USE_KERF_MARGIN_FOR_SHEETS = true; // margin acts like kerf (gap), not full padding on all sides
-const SHEET_RANDOM_TRIALS = 80; // extra random orderings to reduce fragmentation (set 0 to revert)
+const SHEET_RANDOM_TRIALS = 12; // extra random orderings to reduce fragmentation (set 0 to revert)
 
 // Toggle to revert length packing back to the 2D max-rects approach if desired.
 
@@ -135,7 +135,34 @@ export function packOneSheet(
     if (best?.packer.bins.length === 1) break;
   }
 
-  return best!.packer;
+  if (!best || best.packer.bins.length === 0) {
+    // Greedy fallback: one bin per element to avoid returning an empty result
+    const fallbackBins = pool.map((el) => {
+      const fitsNoRotate =
+        el.width <= parent.width && el.length <= parent.length;
+      const useRot = !fitsNoRotate;
+      const width = useRot ? el.length : el.width;
+      const height = useRot ? el.width : el.length;
+      return {
+        width: parent.width,
+        height: parent.length,
+        rects: [
+          {
+            x: border,
+            y: border,
+            width,
+            height,
+            rot: useRot,
+            data: el as unknown as Rectangle["data"],
+          },
+        ],
+      };
+    });
+    //@ts-expect-error shape matches MaxRectsPacker bins contract
+    return { bins: fallbackBins };
+  }
+
+  return best.packer;
 }
 
 /**
@@ -263,10 +290,22 @@ function computeBest(
   ) => MaxRectsPacker<Rectangle>,
   allowedParentsByElementId?: Map<string, Set<string>>,
   memory = new Map<string, DPResult>(),
-  bestSoFar = Infinity
+  bestSoFar = Infinity,
+  startTime = typeof performance !== "undefined" ? performance.now() : 0,
+  deadlineMs = 1800
 ): DPResult {
   if (elements.length === 0) {
     return { totalArea: 0, counts: {}, layouts: [] };
+  }
+
+  // If we are over time budget, return a greedy approximation to keep UI responsive
+  if (
+    startTime &&
+    typeof performance !== "undefined" &&
+    performance.now() - startTime > deadlineMs
+  ) {
+    const greedy = approximateGreedy(elements, selectedParents, packerFactory);
+    return greedy ?? { totalArea: Infinity, counts: {}, layouts: [] };
   }
 
   const memoKey = elements
@@ -372,7 +411,9 @@ function computeBest(
         packerFactory,
         allowedParentsByElementId,
         memory,
-        bestSoFar - areaCost
+        bestSoFar - areaCost,
+        startTime,
+        deadlineMs
       );
 
       const totalArea = areaCost + bestFound.totalArea;
@@ -395,6 +436,65 @@ function computeBest(
   return best;
 }
 
+function approximateGreedy(
+  elements: AnyElement[],
+  selectedParents: Array<Sheet | SteelLength>,
+  packerFactory: (
+    parent: Sheet | SteelLength,
+    elements: AnyElement[]
+  ) => MaxRectsPacker<Rectangle>
+): DPResult | null {
+  if (elements.length === 0 || selectedParents.length === 0) return null;
+
+  const largestParent = [...selectedParents]
+    .sort((a, b) => b.width * b.length - a.width * a.length)
+    .find((p) => p);
+  if (!largestParent) return null;
+
+  const packer = packerFactory(largestParent, elements);
+  const bins = packer.bins ?? [];
+  if (bins.length === 0) return null;
+
+  const layouts: ParentLayout[] = [];
+  const parentArea = largestParent.width * largestParent.length;
+
+  for (const bin of bins) {
+    const rects = (bin.rects || []).map((r) => {
+      const el = r.data as SheetElement;
+      return {
+        element: el,
+        x: r.x,
+        y: r.y,
+        width: r.width,
+        length: r.height,
+        rotated: !!r.rot,
+      } as PlacedRect;
+    });
+
+    if (rects.length === 0) continue;
+
+    layouts.push({
+      parentId: largestParent.id,
+      parentName: largestParent.name,
+      parentSize: `${formatEuropeanFloat(
+        largestParent.length
+      )}×${formatEuropeanFloat(largestParent.width)}`,
+      parentArea,
+      width: largestParent.width,
+      length: largestParent.length,
+      rectangles: rects,
+    });
+  }
+
+  if (layouts.length === 0) return null;
+
+  return {
+    totalArea: parentArea * layouts.length,
+    counts: { [largestParent.id]: layouts.length },
+    layouts,
+  };
+}
+
 /**
  * Sheet nesting with free rotation (default behavior).
  */
@@ -414,7 +514,9 @@ export function findBestForSheets(
     packerFactory,
     undefined,
     memory,
-    bestSoFar
+    bestSoFar,
+    typeof performance !== "undefined" ? performance.now() : 0,
+    2400
   );
 }
 
@@ -464,7 +566,9 @@ export function findBestForLengths(
     packerFactory,
     allowedParentsByElementId.size > 0 ? allowedParentsByElementId : undefined,
     memory,
-    bestSoFar
+    bestSoFar,
+    typeof performance !== "undefined" ? performance.now() : 0,
+    2400
   );
 }
 
@@ -487,7 +591,9 @@ export function findBestForSheetsStraightCuts(
     packerFactory,
     undefined,
     memory,
-    bestSoFar
+    bestSoFar,
+    typeof performance !== "undefined" ? performance.now() : 0,
+    2400
   );
 }
 
@@ -574,6 +680,11 @@ export function nestWithStraightCuts(
         currentY += rowHeight + margin;
       }
 
+      if (rectsThisBin.length === 0) {
+        // Nothing fit in this bin; avoid emitting an empty bin that would recurse forever
+        break;
+      }
+
       binsOut.push({
         rects: rectsThisBin.map((r) => ({
           x: r.x,
@@ -586,25 +697,27 @@ export function nestWithStraightCuts(
         width: parentWidth,
         height: parentLength,
       });
-
-      if (rectsThisBin.length === 0) break;
     }
     return binsOut;
   };
 
-  const binsA = buildBins(parent.width, parent.length, elements);
-  const binsB = buildBins(parent.length, parent.width, elements).map((b) => ({
-    ...b,
-    width: b.height,
-    height: b.width,
-    rects: b.rects.map((r) => ({
-      ...r,
-      x: r.y,
-      y: r.x,
-      width: r.height,
-      height: r.width,
-    })),
-  }));
+  const binsA = buildBins(parent.width, parent.length, elements).filter(
+    (b) => b.rects.length > 0
+  );
+  const binsB = buildBins(parent.length, parent.width, elements)
+    .filter((b) => b.rects.length > 0)
+    .map((b) => ({
+      ...b,
+      width: b.height,
+      height: b.width,
+      rects: b.rects.map((r) => ({
+        ...r,
+        x: r.y,
+        y: r.x,
+        width: r.height,
+        height: r.width,
+      })),
+    }));
 
   const areaUsed = (bins: typeof binsA) =>
     bins.reduce(
@@ -613,7 +726,9 @@ export function nestWithStraightCuts(
     );
 
   const pick =
-    binsA.length < binsB.length
+    binsA.length === 0 && binsB.length === 0
+      ? []
+      : binsA.length < binsB.length
       ? binsA
       : binsA.length > binsB.length
       ? binsB

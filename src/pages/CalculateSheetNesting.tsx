@@ -86,6 +86,7 @@ export default function CalculateSheetNesting() {
     unusableElements: SheetElement[];
     parentSummaries: string[];
     selectedMachine?: Machine;
+    extraDetails?: string[];
   } | null>(null);
   const vizRef = useRef<HTMLDivElement | null>(null);
   const svgRefs = useRef<Map<string, SVGSVGElement | null>>(new Map());
@@ -312,13 +313,62 @@ export default function CalculateSheetNesting() {
           }))
       );
 
-      const best = selectedProfile?.straightCuts
-        ? findBestForSheetsStraightCuts(
-            relevantElements,
-            selectedSheets,
-            selectedProfile
-          )
-        : findBestForSheets(relevantElements, selectedSheets, selectedProfile);
+      const computePrimary = () =>
+        selectedProfile?.straightCuts
+          ? findBestForSheetsStraightCuts(
+              relevantElements,
+              selectedSheets,
+              selectedProfile
+            )
+          : findBestForSheets(
+              relevantElements,
+              selectedSheets,
+              selectedProfile
+            );
+
+      const computeFallback = () =>
+        selectedProfile?.straightCuts
+          ? findBestForSheets(relevantElements, selectedSheets, selectedProfile)
+          : selectedProfile
+          ? findBestForSheetsStraightCuts(
+              relevantElements,
+              selectedSheets,
+              selectedProfile
+            )
+          : null;
+
+      let best = computePrimary();
+      if (!best.layouts || best.layouts.length === 0) {
+        const alt = computeFallback();
+        if (alt && alt.layouts.length > 0) {
+          best = alt;
+        }
+      }
+
+      if (!best.layouts || best.layouts.length === 0) {
+        setIsCalculating(false);
+        const elementSummaries = relevantElements.map(
+          (el) =>
+            `${el.name ?? el.id} (${formatEuropeanFloat(
+              el.length
+            )}×${formatEuropeanFloat(el.width)} mm)`
+        );
+
+        setUnusableData({
+          unusableElements: [],
+          parentSummaries: [
+            language === "da"
+              ? "Ingen gyldig nesting kunne findes med de valgte plader og margin/border indstillinger."
+              : "No valid nesting could be found with the selected sheets and margin/border settings.",
+            language === "da"
+              ? `Forsøgt med ${selectedProfile?.straightCuts ? "lige snit" : "fri rotation"}, samt alternativ strategi som også fejlede.`
+              : `Tried with ${selectedProfile?.straightCuts ? "straight cuts" : "free rotation"}, plus the alternate strategy, but both failed.`,
+          ],
+          selectedMachine: selectedProfile,
+          extraDetails: elementSummaries,
+        });
+        return;
+      }
 
       const results = selectedSheets
         .map((sheet) => ({

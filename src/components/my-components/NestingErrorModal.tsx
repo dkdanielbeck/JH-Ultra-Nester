@@ -11,6 +11,7 @@ type NestingErrorModalProps = {
   selectedMachine?: Machine;
   parentLabel: string;
   onClose: () => void;
+  extraDetails?: string[];
 };
 
 export default function NestingErrorModal({
@@ -19,16 +20,18 @@ export default function NestingErrorModal({
   parentSummaries,
   selectedMachine,
   parentLabel,
+  extraDetails,
   onClose,
 }: NestingErrorModalProps) {
   const title = language === "da" ? "Nesting mislykkedes" : "Nesting failed";
   const intro =
     language === "da"
-      ? "Et eller flere emner passer ikke i de valgte elementer."
-      : "One or more elements cannot fit inside the selected parents.";
+      ? "Et eller flere emner kan ikke placeres med de valgte indstillinger."
+      : "One or more elements cannot be placed with the selected settings.";
 
   const elementsLabel = language === "da" ? "Emner:" : "Elements:";
   const machineLabel = language === "da" ? "Maskine:" : "Machine:";
+  const extraLabel = language === "da" ? "Flere detaljer:" : "More details:";
 
   const elementsText = unusableElements
     .map(
@@ -46,8 +49,11 @@ export default function NestingErrorModal({
     : "-";
 
   const parentText = parentSummaries.join("\n") || "-";
+  const extraText = extraDetails?.join("\n") ?? "";
 
-  const body = `${intro}\n\n${elementsLabel}\n${elementsText}\n\n${machineLabel}\n${machineText}\n\n${parentLabel}:\n${parentText}`;
+  const body = `${intro}\n\n${elementsLabel}\n${elementsText}\n\n${machineLabel}\n${machineText}\n\n${parentLabel}:\n${parentText}${
+    extraText ? `\n\n${extraLabel}\n${extraText}` : ""
+  }`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
