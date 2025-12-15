@@ -47,6 +47,7 @@ import PrintButton from "@/components/my-components/PrintButton";
 import {
   type PrintDensity,
   type PrintableItem,
+  type PrintableResultsPage,
   printVisualisations,
 } from "@/lib/print/print-manager";
 
@@ -188,11 +189,50 @@ export default function CalculateLengthNesting() {
       return;
     }
 
+    const resultsPage: PrintableResultsPage | undefined =
+      endResults.nestingParent.length > 0
+        ? {
+            title:
+              language === "da"
+                ? "Nesting resultat"
+                : "Nesting results",
+            items: endResults.nestingParent.map((parent) => {
+              const pricePart =
+                parent.weight && parent.price
+                  ? ` → ${formatEuropeanFloat(
+                      parent.count * parent.weight * parent.price
+                    )} kr.`
+                  : "";
+              return `${parent.count} × ${parent.name} (${parent.size} mm)${pricePart}`;
+            }),
+            footer: [
+              `${language === "da" ? "Materialeareal" : "Material area"}: ${formatEuropeanFloat(
+                endResults.totalMaterialArea
+              )} mm²`,
+              `${language === "da" ? "Emneareal" : "Elements area"}: ${formatEuropeanFloat(
+                endResults.totalElementsArea
+              )} mm²`,
+              `${language === "da" ? "Spild" : "Waste"}: ${formatEuropeanFloat(
+                endResults.totalWaste
+              )} mm²`,
+            ],
+          }
+        : undefined;
+
     await printVisualisations({
       items: printableItems,
       density: printDensity,
+      resultsPage,
     });
-  }, [lengthLayoutData.layouts, printDensity]);
+  }, [
+    endResults.nestingParent,
+    endResults.totalElementsArea,
+    endResults.totalMaterialArea,
+    endResults.totalWaste,
+    language,
+    lengthLayoutData.layouts,
+    printDensity,
+  ]);
 
   const globalScale =
     lengthLayoutData.layouts.length > 0

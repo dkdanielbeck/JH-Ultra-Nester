@@ -6,6 +6,12 @@ export interface PrintableItem {
   svgNode: SVGSVGElement;
 }
 
+export interface PrintableResultsPage {
+  title: string;
+  items: string[];
+  footer?: string[];
+}
+
 interface NormalizedSvg {
   svg: SVGSVGElement;
   width: number;
@@ -23,9 +29,11 @@ const SAFETY_MARGIN = 32; // leave headroom for browser headers/footers and roun
 export async function printVisualisations({
   items,
   density,
+  resultsPage,
 }: {
   items: PrintableItem[];
   density: PrintDensity;
+  resultsPage?: PrintableResultsPage;
 }) {
   if (!items.length) {
     console.warn("printVisualisations: no items to print.");
@@ -46,7 +54,7 @@ export async function printVisualisations({
   doc.close();
 
   injectStyles(doc);
-  layoutPages(doc, items, density);
+  layoutPages(doc, items, density, resultsPage);
 
   await waitForReady(win);
 
@@ -99,6 +107,31 @@ function injectStyles(doc: Document) {
     .print-page.page-break {
       page-break-after: always;
     }
+    .results-page {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      font-size: 14px;
+      color: #111827;
+    }
+    .results-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .results-list {
+      padding-left: 18px;
+      margin: 0;
+    }
+    .results-list li {
+      margin-bottom: 6px;
+      line-height: 1.35;
+    }
+    .results-footer {
+      padding-top: 8px;
+      border-top: 1px solid #e5e7eb;
+      margin-top: 4px;
+    }
     .viz-cell {
       background: white;
       border: 1px solid #dcdfe4;
@@ -136,7 +169,16 @@ function injectStyles(doc: Document) {
   doc.head.appendChild(style);
 }
 
-function layoutPages(doc: Document, items: PrintableItem[], density: PrintDensity) {
+function layoutPages(
+  doc: Document,
+  items: PrintableItem[],
+  density: PrintDensity,
+  resultsPage?: PrintableResultsPage
+) {
+  if (resultsPage) {
+    appendResultsPage(doc, resultsPage);
+  }
+
   const pages = chunk(items, density);
 
   pages.forEach((pageItems, pageIndex) => {
@@ -192,6 +234,37 @@ function layoutPages(doc: Document, items: PrintableItem[], density: PrintDensit
 
     doc.body.appendChild(page);
   });
+}
+
+function appendResultsPage(doc: Document, resultsPage: PrintableResultsPage) {
+  const page = doc.createElement("div");
+  page.className = "print-page page-break results-page";
+  page.style.display = "flex";
+
+  const title = doc.createElement("div");
+  title.className = "results-title";
+  title.textContent = resultsPage.title;
+  page.appendChild(title);
+
+  if (resultsPage.items.length > 0) {
+    const list = doc.createElement("ul");
+    list.className = "results-list";
+    for (const item of resultsPage.items) {
+      const li = doc.createElement("li");
+      li.textContent = item;
+      list.appendChild(li);
+    }
+    page.appendChild(list);
+  }
+
+  if (resultsPage.footer && resultsPage.footer.length > 0) {
+    const footer = doc.createElement("div");
+    footer.className = "results-footer";
+    footer.textContent = resultsPage.footer.join(" · ");
+    page.appendChild(footer);
+  }
+
+  doc.body.appendChild(page);
 }
 
 function getGrid(density: PrintDensity): { columns: number; rows: number } {
