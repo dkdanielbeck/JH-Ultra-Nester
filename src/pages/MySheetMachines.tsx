@@ -57,6 +57,7 @@ export default function MySheetMachines() {
   const [beingEdited, setBeingEdited] = useState<string>("");
 
   const [loading, setIsLoading] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string>("");
   const canAdd =
     !!name?.trim() &&
     isValidEuropeanNumberString(margin) &&
@@ -79,17 +80,38 @@ export default function MySheetMachines() {
   }, []);
 
   const addNewMachine = async () => {
-    const newMachine = await insertMachine({
+    const candidate = {
       name,
       border: parseEuropeanFloat(border),
       margin: parseEuropeanFloat(margin),
       type: ITEMTYPES.Machine,
       default: false,
       straightCuts: false,
-    });
+    };
+
+    const duplicate = machines.some(
+      (m) =>
+        m.name.trim() === candidate.name.trim() &&
+        m.border === candidate.border &&
+        m.margin === candidate.margin &&
+        m.default === candidate.default &&
+        m.straightCuts === candidate.straightCuts
+    );
+
+    if (duplicate) {
+      setErrorMessage(
+        language === "da"
+          ? "En maskine med de samme værdier findes allerede."
+          : "A machine with the same values already exists."
+      );
+      return;
+    }
+
+    const newMachine = await insertMachine(candidate);
 
     setMachines([...machines, newMachine]);
 
+    setErrorMessage("");
     setName("");
     setBorder("");
     setMargin("");
@@ -387,11 +409,14 @@ export default function MySheetMachines() {
           <AddButton
             language={language}
             disabled={!canAdd}
-            onClick={addNewMachine}
+            onClick={() => {}}
             type="submit"
           />
         </div>
       </form>
+      {errorMessage && (
+        <p className="text-sm text-destructive mb-2">{errorMessage}</p>
+      )}
 
       {loading && <TableSkeleton />}
       {!loading && rows.length === 0 && (

@@ -18,6 +18,7 @@ import {
   formatEuropeanFloat,
   isValidEuropeanNumberString,
   parseEuropeanFloat,
+  ensureLengthIsLargest,
 } from "@/lib/utils";
 import InputField from "@/components/my-components/InputField";
 import type { Row } from "@/components/my-components/DataTable";
@@ -60,6 +61,7 @@ export default function MySheetElements() {
   const [beingEdited, setBeingEdited] = useState<string>("");
 
   const [loading, setIsLoading] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string>("");
 
   useEffect(() => {
     const loadSheetElements = async () => {
@@ -78,13 +80,31 @@ export default function MySheetElements() {
   }, []);
 
   const addSheetElement = async () => {
-    const newSheetElement = await insertSheetElement({
+    const normalized = ensureLengthIsLargest({
       name,
       length: parseEuropeanFloat(length),
       width: parseEuropeanFloat(width),
       type: ITEMTYPES.SheetElement,
     });
+
+    const duplicate = sheetElements.some(
+      (el) =>
+        el.name.trim() === normalized.name.trim() &&
+        el.length === normalized.length &&
+        el.width === normalized.width
+    );
+    if (duplicate) {
+      setErrorMessage(
+        language === "da"
+          ? "Et emne med samme navn, længde og bredde findes allerede."
+          : "An element with the same name, length, and width already exists."
+      );
+      return;
+    }
+
+    const newSheetElement = await insertSheetElement(normalized);
     setSheetElements([...sheetElements, newSheetElement]);
+    setErrorMessage("");
 
     setName("");
     setWidth("");
@@ -308,11 +328,14 @@ export default function MySheetElements() {
               !isValidEuropeanNumberString(length) ||
               !isValidEuropeanNumberString(width)
             }
-            onClick={addSheetElement}
+            onClick={() => {}}
             type="submit"
           />
         </div>
       </form>
+      {errorMessage && (
+        <p className="text-sm text-destructive mb-2">{errorMessage}</p>
+      )}
       {loading && <TableSkeleton />}
       {!loading && rows.length === 0 && (
         <EmptyStateLine language={language} type={ITEMTYPES.SheetElement} />

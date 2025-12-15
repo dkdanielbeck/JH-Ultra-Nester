@@ -18,6 +18,7 @@ import {
   formatEuropeanFloat,
   isValidEuropeanNumberString,
   parseEuropeanFloat,
+  ensureLengthIsLargest,
 } from "@/lib/utils";
 import InputField from "@/components/my-components/InputField";
 import type { Row } from "@/components/my-components/DataTable";
@@ -68,6 +69,7 @@ export default function MySheets() {
   const [editedWeight, setEditedWeight] = useState<string>("");
   const [editedLength, setEditedLength] = useState<string>("");
   const [beingEdited, setBeingEdited] = useState<string>("");
+  const [errorMessage, setErrorMessage] = useState<string>("");
   const canAdd =
     !!name?.trim() &&
     !!length?.trim() &&
@@ -94,15 +96,35 @@ export default function MySheets() {
   }, []);
 
   const addSheet = async () => {
-    const newSheet = await insertSheet({
+    const normalized = ensureLengthIsLargest({
       name,
       length: parseEuropeanFloat(length),
       width: parseEuropeanFloat(width),
-      price: parseEuropeanFloat(price),
-      weight: parseEuropeanFloat(weight),
+      price: price?.trim() ? parseEuropeanFloat(price) : undefined,
+      weight: weight?.trim() ? parseEuropeanFloat(weight) : undefined,
       type: ITEMTYPES.Sheet,
     });
+
+    const duplicate = sheets.some(
+      (s) =>
+        s.name.trim() === normalized.name.trim() &&
+        s.length === normalized.length &&
+        s.width === normalized.width &&
+        (s.price ?? undefined) === (normalized.price ?? undefined) &&
+        (s.weight ?? undefined) === (normalized.weight ?? undefined)
+    );
+    if (duplicate) {
+      setErrorMessage(
+        language === "da"
+          ? "En plade med de samme værdier findes allerede."
+          : "A sheet with the same values already exists."
+      );
+      return;
+    }
+
+    const newSheet = await insertSheet(normalized);
     setSheets([...sheets, newSheet]);
+    setErrorMessage("");
     setName("");
     setWidth("");
     setPrice("");
@@ -407,11 +429,14 @@ export default function MySheets() {
           <AddButton
             language={language}
             disabled={!canAdd}
-            onClick={addSheet}
+            onClick={() => {}}
             type="submit"
           />
         </div>
       </form>
+      {errorMessage && (
+        <p className="text-sm text-destructive mb-2">{errorMessage}</p>
+      )}
       {loading && <TableSkeleton />}
       {!loading && rows.length === 0 && (
         <EmptyStateLine language={language} type={ITEMTYPES.Sheet} />

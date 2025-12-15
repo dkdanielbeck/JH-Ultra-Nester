@@ -61,6 +61,7 @@ export default function MySteelLengths() {
   const [editedPrice, setEditedPrice] = useState<string>("");
   const [editedWeight, setEditedWeight] = useState<string>("");
   const [beingEdited, setBeingEdited] = useState<string>("");
+  const [errorMessage, setErrorMessage] = useState<string>("");
 
   const [loading, setIsLoading] = useState<boolean>(false);
   const canAdd =
@@ -87,16 +88,36 @@ export default function MySteelLengths() {
   }, []);
 
   const addNewSteelLength = async () => {
-    const newStelLength = await insertSteelLength({
+    const candidate = {
       name,
       length: parseEuropeanFloat(length),
       width: 200,
-      price: parseEuropeanFloat(price),
-      weight: parseEuropeanFloat(weight),
+      price: price?.trim() ? parseEuropeanFloat(price) : undefined,
+      weight: weight?.trim() ? parseEuropeanFloat(weight) : undefined,
       type: ITEMTYPES.SteelLength,
-    });
+    };
+
+    const duplicate = steelLengths.some(
+      (sl) =>
+        sl.name.trim() === candidate.name.trim() &&
+        sl.length === candidate.length &&
+        sl.width === candidate.width &&
+        (sl.price ?? undefined) === (candidate.price ?? undefined) &&
+        (sl.weight ?? undefined) === (candidate.weight ?? undefined)
+    );
+    if (duplicate) {
+      setErrorMessage(
+        language === "da"
+          ? "En stål længde med samme værdier findes allerede."
+          : "A steel length with the same values already exists."
+      );
+      return;
+    }
+
+    const newStelLength = await insertSteelLength(candidate);
 
     setSteelLengths([...steelLengths, newStelLength]);
+    setErrorMessage("");
     setName("");
     setPrice("");
     setWeight("");
@@ -371,11 +392,14 @@ export default function MySteelLengths() {
           <AddButton
             language={language}
             disabled={!canAdd}
-            onClick={addNewSteelLength}
+            onClick={() => {}}
             type="submit"
           />
         </div>
       </form>
+      {errorMessage && (
+        <p className="text-sm text-destructive mb-2">{errorMessage}</p>
+      )}
       {loading && <TableSkeleton />}
       {!loading && rows.length === 0 && (
         <EmptyStateLine language={language} type={ITEMTYPES.SteelLength} />

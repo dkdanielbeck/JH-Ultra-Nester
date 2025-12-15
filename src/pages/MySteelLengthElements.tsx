@@ -58,6 +58,7 @@ export default function MySteelLengthElements() {
   const [beingEdited, setBeingEdited] = useState<string>("");
 
   const [loading, setIsLoading] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string>("");
   const canAdd =
     !!name?.trim() && !!length?.trim() && isValidEuropeanNumberString(length);
 
@@ -78,14 +79,33 @@ export default function MySteelLengthElements() {
   }, []);
 
   const addNewSteelLengthElement = async () => {
-    const newStelLengthElement = await insertSteelLengthElement({
+    const candidate = {
       name,
       length: parseEuropeanFloat(length),
       width: 200,
       type: ITEMTYPES.SteelLengthElement,
-    });
+    };
+
+    const duplicate = steelLengthElements.some(
+      (el) =>
+        el.name.trim() === candidate.name.trim() &&
+        el.length === candidate.length &&
+        el.width === candidate.width
+    );
+
+    if (duplicate) {
+      setErrorMessage(
+        language === "da"
+          ? "Et længde-emne med samme værdier findes allerede."
+          : "A length element with the same values already exists."
+      );
+      return;
+    }
+
+    const newStelLengthElement = await insertSteelLengthElement(candidate);
 
     setSteelLengthElements([...steelLengthElements, newStelLengthElement]);
+    setErrorMessage("");
     setName("");
     setLength("");
   };
@@ -270,11 +290,14 @@ export default function MySteelLengthElements() {
           <AddButton
             language={language}
             disabled={!canAdd}
-            onClick={addNewSteelLengthElement}
+            onClick={() => {}}
             type="submit"
           />
         </div>
       </form>
+      {errorMessage && (
+        <p className="text-sm text-destructive mb-2">{errorMessage}</p>
+      )}
       {loading && <TableSkeleton />}
       {!loading && rows.length === 0 && (
         <EmptyStateLine
